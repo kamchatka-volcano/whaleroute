@@ -5,12 +5,12 @@
 namespace without_processor {
 
 class RouterWithoutProcessor : public ::testing::Test,
-                               public whaleroute::RequestRouter<whaleroute::_, Request, RequestMethod, Response, std::string> {
+                               public whaleroute::RequestRouter<whaleroute::_, Request, RequestType, Response, std::string> {
 public:
-    void processRequest(RequestMethod method, const std::string& path)
+    void processRequest(RequestType type, const std::string& path)
     {
         auto response = Response{};
-        process(Request{method, path}, response);
+        process(Request{type, path}, response);
         responseData_ = response.data;
     }
 
@@ -25,9 +25,9 @@ protected:
         return request.requestPath;
     }
 
-    RequestMethod getRequestMethod(const Request& request) final
+    RequestType getRequestType(const Request& request) final
     {
-        return request.method;
+        return request.type;
     }
 
     void processUnmatchedRequest(const Request&, Response& response) final
@@ -46,45 +46,45 @@ protected:
 
 TEST_F(RouterWithoutProcessor, NoMatchRouteText)
 {
-    route("/", RequestMethod::GET).set("Hello world");
+    route("/", RequestType::GET).set("Hello world");
     route().set("Not found");
-    processRequest(RequestMethod::GET, "/foo");
+    processRequest(RequestType::GET, "/foo");
 
     checkResponse("Not found");
 }
 
 TEST_F(RouterWithoutProcessor, MultipleRoutes)
 {
-    route("/", RequestMethod::GET).set("Hello world");
-    route("/page0", RequestMethod::GET).set("Default page");
-    route(std::regex{R"(/page\d*)"}, RequestMethod::GET).set("Some page");
-    route("/upload", RequestMethod::POST).set("OK");
-    route(std::regex{R"(/files/.*\.xml)"}, RequestMethod::GET).process(
+    route("/", RequestType::GET).set("Hello world");
+    route("/page0", RequestType::GET).set("Default page");
+    route(std::regex{R"(/page\d*)"}, RequestType::GET).set("Some page");
+    route("/upload", RequestType::POST).set("OK");
+    route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};
                 response.data = fileContent;
             });
     route().set("404");
 
-    processRequest(RequestMethod::GET, "/");
+    processRequest(RequestType::GET, "/");
     checkResponse("Hello world");
 
-    processRequest(RequestMethod::POST, "/upload");
+    processRequest(RequestType::POST, "/upload");
     checkResponse("OK");
 
-    processRequest(RequestMethod::GET, "/page123");
+    processRequest(RequestType::GET, "/page123");
     checkResponse("Some page");
 
-    processRequest(RequestMethod::GET, "/page0");
+    processRequest(RequestType::GET, "/page0");
     checkResponse("Default page");
 
-    processRequest(RequestMethod::GET, "/files/test.xml");
+    processRequest(RequestType::GET, "/files/test.xml");
     checkResponse("testXML");
 
-    processRequest(RequestMethod::GET, "/files/test.xml1");
+    processRequest(RequestType::GET, "/files/test.xml1");
     checkResponse("404");
 
-    processRequest(RequestMethod::POST, "/foo");
+    processRequest(RequestType::POST, "/foo");
     checkResponse("404");
 }
 

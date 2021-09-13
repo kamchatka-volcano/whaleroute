@@ -7,10 +7,10 @@ namespace without_processor_and_response_value {
 class RouterWithoutProcessorAndRequestTypeAndResponseValue : public ::testing::Test,
                                                              public whaleroute::RequestRouter<whaleroute::_, Request, whaleroute::_, Response> {
 public:
-    void processRequest(RequestMethod method, const std::string& path)
+    void processRequest(RequestType type, const std::string& path)
     {
         auto response = Response{};
-        process(Request{method, path}, response);
+        process(Request{type, path}, response);
         responseData_ = response.data;
     }
 
@@ -38,7 +38,7 @@ TEST_F(RouterWithoutProcessorAndRequestTypeAndResponseValue, NoMatchRouteText)
 {
     route("/").process([](auto&, auto& response){ response.data = "Hello world"; });
     route().process([](auto&, auto& response){ response.data = "Not found";});
-    processRequest(RequestMethod::GET, "/foo");
+    processRequest(RequestType::GET, "/foo");
 
     checkResponse("Not found");
 }
@@ -56,25 +56,25 @@ TEST_F(RouterWithoutProcessorAndRequestTypeAndResponseValue, MultipleRoutes)
             });
     route().process([](auto&, auto& response){ response.data = "404";});
 
-    processRequest(RequestMethod::POST, "/");
+    processRequest(RequestType::POST, "/");
     checkResponse("Hello world");
 
-    processRequest(RequestMethod::POST, "/upload");
+    processRequest(RequestType::POST, "/upload");
     checkResponse("OK");
 
-    processRequest(RequestMethod::POST, "/page123");
+    processRequest(RequestType::POST, "/page123");
     checkResponse("Some page");
 
-    processRequest(RequestMethod::POST, "/page0");
+    processRequest(RequestType::POST, "/page0");
     checkResponse("Default page");
 
-    processRequest(RequestMethod::POST, "/files/test.xml");
+    processRequest(RequestType::POST, "/files/test.xml");
     checkResponse("testXML");
 
-    processRequest(RequestMethod::POST, "/files/test.xml1");
+    processRequest(RequestType::POST, "/files/test.xml1");
     checkResponse("404");
 
-    processRequest(RequestMethod::POST, "/foo");
+    processRequest(RequestType::POST, "/foo");
     checkResponse("404");
 }
 

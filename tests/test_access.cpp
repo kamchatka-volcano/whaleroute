@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 class AccessTestingRouter : public ::testing::TestWithParam<std::tuple<whaleroute::RouteAccess, bool>>,
-public whaleroute::RequestRouter<whaleroute::_, Request, RequestMethod, Response, ResponseValue> {
+public whaleroute::RequestRouter<whaleroute::_, Request, RequestType, Response, ResponseValue> {
 public:
 AccessTestingRouter()
 {
@@ -15,10 +15,10 @@ accessType_ = std::get<0>(GetParam());
 state_.activated = false;
 }
 
-void processRequest(RequestMethod method, const std::string& path)
+void processRequest(RequestType type, const std::string& path)
 {
     auto response = Response{};
-    process(Request{method, path}, response);
+    process(Request{type, path}, response);
     responseData_ = response.data;
 }
 
@@ -91,9 +91,9 @@ std::string getRequestPath(const Request& request) final
 return request.requestPath;
 }
 
-RequestMethod getRequestMethod(const Request& request) final
+RequestType getRequestType(const Request& request) final
 {
-return request.method;
+return request.type;
 }
 
 void processUnmatchedRequest(const Request&, Response& response) final
@@ -124,38 +124,38 @@ TestState state_;
 
 TEST_P(AccessTestingRouter, SetResponseValue)
 {
-route("/", RequestMethod::GET, accessType_).set(ResponseValue{"Hello world"});
+route("/", RequestType::GET, accessType_).set(ResponseValue{"Hello world"});
 
-processRequest(RequestMethod::GET, "/");
+processRequest(RequestType::GET, "/");
 checkResponse("Hello world");
 }
 
 TEST_P(AccessTestingRouter, SetResponseValueWithRegexp)
 {
-route(std::regex{R"(/page\d*)"}, RequestMethod::GET, accessType_).set(ResponseValue{"Hello world"});
+route(std::regex{R"(/page\d*)"}, RequestType::GET, accessType_).set(ResponseValue{"Hello world"});
 
-processRequest(RequestMethod::GET, "/page123");
+processRequest(RequestType::GET, "/page123");
 checkResponse("Hello world");
 }
 
 TEST_P(AccessTestingRouter, Process)
 {
-route("/", RequestMethod::GET, accessType_).process(makeProcessor([](const Request&, Response& response) {
+route("/", RequestType::GET, accessType_).process(makeProcessor([](const Request&, Response& response) {
     response.data = "Hello world";
 }));
 
-processRequest(RequestMethod::GET, "/");
+processRequest(RequestType::GET, "/");
 checkResponse("Hello world");
 }
 
 TEST_P(AccessTestingRouter, ProcessWithRegexp)
 {
-route(std::regex{R"(/page\d*)"}, RequestMethod::GET, accessType_).process(
+route(std::regex{R"(/page\d*)"}, RequestType::GET, accessType_).process(
         makeProcessor([](const Request&, Response& response) {
     response.data = "Hello world";
 }));
 
-processRequest(RequestMethod::GET, "/page123");
+processRequest(RequestType::GET, "/page123");
 checkResponse("Hello world");
 }
 

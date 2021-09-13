@@ -5,12 +5,12 @@ struct TestState{
     bool activated = false;
 };
 
-enum class RequestMethod{
+enum class RequestType{
     GET,
     POST
 };
 struct Request{
-    RequestMethod method;
+    RequestType type;
     std::string requestPath;
     std::string name;
 };

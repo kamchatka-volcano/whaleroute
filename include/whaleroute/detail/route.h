@@ -7,27 +7,27 @@
 #include <memory>
 
 namespace whaleroute{
-template <typename TRequestProcessor, typename TRequest, typename TRequestMethod, typename TResponse, typename TResponseValue>
+template <typename TRequestProcessor, typename TRequest, typename TRequestType, typename TResponse, typename TResponseValue>
 class RequestRouter;
 }
 
 namespace whaleroute::detail{
-template<typename TRequestMethod>
-class RouteRequestMethod{
+template<typename TRequestType>
+class RouteRequestType{
 public:
-    template <typename T = TRequestMethod, typename = std::enable_if_t<!std::is_same_v<T, _>>>
-    RouteRequestMethod(TRequestMethod method)
-        : requestMethod_(method)
+    template <typename T = TRequestType, typename = std::enable_if_t<!std::is_same_v<T, _>>>
+    RouteRequestType(TRequestType type)
+        : requestType_(type)
         , isAny_(false)
     {}
 
-    RouteRequestMethod(_)
+    RouteRequestType(_)
         : isAny_(true)
     {}
 
-    operator TRequestMethod() const
+    operator TRequestType() const
     {
-        return requestMethod_;
+        return requestType_;
     }
 
     bool isAny() const
@@ -37,7 +37,7 @@ public:
 
 
 private:
-    TRequestMethod requestMethod_;
+    TRequestType requestType_;
     bool isAny_;
 };
 
@@ -45,15 +45,15 @@ private:
 template <typename TRequestProcessor>
 class RequestProcessorSet;
 
-template <typename TRequestProcessor, typename TRequest, typename TRequestMethod, typename TResponse, typename TResponseValue>
+template <typename TRequestProcessor, typename TRequest, typename TRequestType, typename TResponse, typename TResponseValue>
 class Route{    
-    friend class RequestRouter<TRequestProcessor, TRequest, TRequestMethod, TResponse, TResponseValue>;
+    friend class RequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>;
     using ProcessingFunc = std::function<void(const TRequest&, TResponse&)>;
-    using Processor = std::tuple<RouteRequestMethod<TRequestMethod>, ProcessingFunc>;
+    using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
 
 public:
-    Route(RequestProcessorSet<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequestProcessor, TRequest, TRequestMethod, TResponse, TResponseValue>& router)
-        : requestMethod_(_{})
+    Route(RequestProcessorSet<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>& router)
+        : requestType_(_{})
         , requestProcessorSet_(requestProcessorSet)
         , router_(router)
     {
@@ -64,7 +64,7 @@ public:
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
         auto& requestProcessor = requestProcessorSet_.template get<TProcessor>();
-        auto processor = std::make_tuple(requestMethod_,
+        auto processor = std::make_tuple(requestType_,
                                          [&requestProcessor, this](const TRequest& request, TResponse& response)
                                          {
                                              router_.callRequestProcessor(requestProcessor, request, response);
@@ -78,7 +78,7 @@ public:
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
         auto& requestProcessor = requestProcessorSet_.template get<TProcessor>(std::forward<TArgs>(args)...);
-        auto processor = std::make_tuple(requestMethod_,
+        auto processor = std::make_tuple(requestType_,
                                          [&requestProcessor, this](const TRequest& request, TResponse& response)
                                          {
                                              router_.callRequestProcessor(requestProcessor, request, response);
@@ -91,7 +91,7 @@ public:
     auto process(TProcessor& requestProcessor)-> std::enable_if_t<!std::is_same_v<T, _>, Route&>
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        auto processor = std::make_tuple(requestMethod_,
+        auto processor = std::make_tuple(requestType_,
                                          [&requestProcessor, this](const TRequest& request, TResponse& response)
                                          {
                                              router_.callRequestProcessor(requestProcessor, request, response);
@@ -102,7 +102,7 @@ public:
 
     Route& process(std::function<void(const TRequest&, TResponse&)> requestProcessor)
     {
-        auto processor = std::make_tuple(requestMethod_,
+        auto processor = std::make_tuple(requestType_,
                                          [requestProcessor](const TRequest& request, TResponse& response)
                                          {
                                              requestProcessor(request, response);
@@ -115,7 +115,7 @@ public:
             typename = std::enable_if_t<!std::is_same_v<TResponseValue, TCheckResponseValue>>>
     void set(const TResponseValue& responseValue)
     {
-        auto processor = std::make_tuple(requestMethod_,
+        auto processor = std::make_tuple(requestType_,
                                          [responseValue, this](const TRequest&, TResponse& response) mutable
                                          {
                                              router_.setResponse(response, responseValue);
@@ -124,18 +124,18 @@ public:
     }
 
 private:
-    void setRequestMethod(RouteRequestMethod<TRequestMethod> requestMethod)
+    void setRequestType(RouteRequestType<TRequestType> requestType)
     {
-        requestMethod_ = requestMethod;
+        requestType_ = requestType;
     }
 
     bool processRequest(const TRequest &request, TResponse& response)
     {
         auto matched = false;
         for (auto& processor : processorList_){
-            auto[processorRequestMethod, processingFunc] = processor;
-            if (processorRequestMethod.isAny() ||
-                static_cast<TRequestMethod>(processorRequestMethod) == router_.getRequestMethod(request)){
+            auto[requestType, processingFunc] = processor;
+            if (requestType.isAny() ||
+                requestType == router_.getRequestType(request)){
                 processingFunc(request, response);
                 matched = true;
             }
@@ -144,10 +144,10 @@ private:
     }
 
 private:
-    RouteRequestMethod<TRequestMethod> requestMethod_;
+    RouteRequestType<TRequestType> requestType_;
     std::vector<Processor> processorList_;
     RequestProcessorSet<TRequestProcessor>& requestProcessorSet_;
-    IRequestRouter<TRequestProcessor, TRequest, TRequestMethod, TResponse, TResponseValue>& router_;
+    IRequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>& router_;
 };
 
 }
