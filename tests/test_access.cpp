@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 class AccessTestingRouter : public ::testing::TestWithParam<std::tuple<whaleroute::RouteAccess, bool>>,
-public whaleroute::RequestRouter<whaleroute::_, Request, RequestType, Response, ResponseValue> {
+public whaleroute::RequestRouter<Request, Response, RequestType, whaleroute::_,ResponseValue> {
 public:
 AccessTestingRouter()
 {

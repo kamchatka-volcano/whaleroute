@@ -4,7 +4,7 @@
 
 
 class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<RequestProcessor, Request, RequestType, Response, std::string> {
+               public whaleroute::RequestRouter<Request, Response, RequestType, RequestProcessor, std::string> {
 public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {

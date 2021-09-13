@@ -5,7 +5,7 @@
 namespace without_processor_and_response_value {
 
 class RouterWithoutProcessorAndResponseValue : public ::testing::Test,
-                                               public whaleroute::RequestRouter<whaleroute::_, Request, RequestType, Response> {
+                                               public whaleroute::RequestRouter<Request, Response, RequestType> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {

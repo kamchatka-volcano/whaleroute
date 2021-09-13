@@ -7,7 +7,7 @@
 #include <memory>
 
 namespace whaleroute{
-template <typename TRequestProcessor, typename TRequest, typename TRequestType, typename TResponse, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
 class RequestRouter;
 }
 
@@ -45,14 +45,14 @@ private:
 template <typename TRequestProcessor>
 class RequestProcessorSet;
 
-template <typename TRequestProcessor, typename TRequest, typename TRequestType, typename TResponse, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
 class Route{    
-    friend class RequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>;
+    friend class RequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
     using ProcessingFunc = std::function<void(const TRequest&, TResponse&)>;
     using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
 
 public:
-    Route(RequestProcessorSet<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>& router)
+    Route(RequestProcessorSet<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
         : requestType_(_{})
         , requestProcessorSet_(requestProcessorSet)
         , router_(router)
@@ -147,7 +147,7 @@ private:
     RouteRequestType<TRequestType> requestType_;
     std::vector<Processor> processorList_;
     RequestProcessorSet<TRequestProcessor>& requestProcessorSet_;
-    IRequestRouter<TRequestProcessor, TRequest, TRequestType, TResponse, TResponseValue>& router_;
+    IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router_;
 };
 
 }

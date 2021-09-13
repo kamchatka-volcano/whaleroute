@@ -5,7 +5,7 @@
 namespace without_processor {
 
 class RouterWithoutProcessor : public ::testing::Test,
-                               public whaleroute::RequestRouter<whaleroute::_, Request, RequestType, Response, std::string> {
+                               public whaleroute::RequestRouter<Request, Response, RequestType, whaleroute::_, std::string> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
