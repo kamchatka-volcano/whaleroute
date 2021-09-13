@@ -1,0 +1,169 @@
+#include "common.h"
+#include <whaleroute/requestrouter.h>
+#include <gtest/gtest.h>
+
+class AccessTestingRouter : public ::testing::TestWithParam<std::tuple<whaleroute::RouteAccess, bool>>,
+public whaleroute::RequestRouter<whaleroute::_, Request, RequestMethod, Response, ResponseValue> {
+public:
+AccessTestingRouter()
+{
+}
+
+void SetUp() override
+{
+accessType_ = std::get<0>(GetParam());
+state_.activated = false;
+}
+
+void processRequest(RequestMethod method, const std::string& path)
+{
+    auto response = Response{};
+    process(Request{method, path}, response);
+    responseData_ = response.data;
+}
+
+void expectNoMatch()
+{
+    EXPECT_EQ(responseData_, "NO_MATCH");
+}
+
+void checkState()
+{
+    switch (accessType_) {
+        case whaleroute::RouteAccess::Open:
+            EXPECT_TRUE(state_.activated);
+            break;
+        case whaleroute::RouteAccess::Authorized: {
+            auto emptyMap = std::vector<std::pair<std::string, std::string>>{};
+            auto request = Request{};
+            if (isAccessAuthorized(request))
+                EXPECT_TRUE(state_.activated);
+            else
+                EXPECT_FALSE(state_.activated);
+            break;
+        }
+        case whaleroute::RouteAccess::Forbidden: {
+            auto emptyMap = std::vector<std::pair<std::string, std::string>>{};
+            auto request = Request{};
+            if (isAccessAuthorized(request))
+                EXPECT_FALSE(state_.activated);
+            else
+                EXPECT_TRUE(state_.activated);
+            break;
+        }
+    }
+}
+
+
+void checkResponse(const std::string& expectedResponseData)
+{
+    checkState();
+    switch (accessType_) {
+        case whaleroute::RouteAccess::Open:
+            EXPECT_EQ(responseData_, expectedResponseData);
+            break;
+        case whaleroute::RouteAccess::Authorized: {
+            auto request = Request{};
+            if (isAccessAuthorized(request))
+                EXPECT_EQ(responseData_, expectedResponseData);
+            else expectNoMatch();
+            break;
+        }
+        case whaleroute::RouteAccess::Forbidden: {
+            auto request = Request{};
+            if (isAccessAuthorized(request))
+                expectNoMatch();
+            else
+                EXPECT_EQ(responseData_, expectedResponseData);
+            break;
+        }
+    }
+}
+
+protected:
+bool isAccessAuthorized(const Request&) const override
+{
+return std::get<1>(GetParam());
+}
+
+std::string getRequestPath(const Request& request) final
+{
+return request.requestPath;
+}
+
+RequestMethod getRequestMethod(const Request& request) final
+{
+return request.method;
+}
+
+void processUnmatchedRequest(const Request&, Response& response) final
+{
+response.data = "NO_MATCH";
+}
+
+void setResponse(Response& response, const ResponseValue& value) final
+{
+state_.activated = true;
+response.data = value.data;
+}
+
+std::function<void(const Request&, Response& response)>
+makeProcessor(std::function<void(const Request&, Response& response)> processor)
+{
+    return [this, processor](const Request& request, Response& response) {
+        state_.activated = true;
+        processor(request, response);
+    };
+}
+
+protected:
+whaleroute::RouteAccess accessType_;
+std::string responseData_;
+TestState state_;
+};
+
+TEST_P(AccessTestingRouter, SetResponseValue)
+{
+route("/", RequestMethod::GET, accessType_).set(ResponseValue{"Hello world"});
+
+processRequest(RequestMethod::GET, "/");
+checkResponse("Hello world");
+}
+
+TEST_P(AccessTestingRouter, SetResponseValueWithRegexp)
+{
+route(std::regex{R"(/page\d*)"}, RequestMethod::GET, accessType_).set(ResponseValue{"Hello world"});
+
+processRequest(RequestMethod::GET, "/page123");
+checkResponse("Hello world");
+}
+
+TEST_P(AccessTestingRouter, Process)
+{
+route("/", RequestMethod::GET, accessType_).process(makeProcessor([](const Request&, Response& response) {
+    response.data = "Hello world";
+}));
+
+processRequest(RequestMethod::GET, "/");
+checkResponse("Hello world");
+}
+
+TEST_P(AccessTestingRouter, ProcessWithRegexp)
+{
+route(std::regex{R"(/page\d*)"}, RequestMethod::GET, accessType_).process(
+        makeProcessor([](const Request&, Response& response) {
+    response.data = "Hello world";
+}));
+
+processRequest(RequestMethod::GET, "/page123");
+checkResponse("Hello world");
+}
+
+INSTANTIATE_TEST_SUITE_P(WithAccessCheck, AccessTestingRouter, ::testing::Values(
+        std::make_tuple(whaleroute::RouteAccess::Open, true),
+        std::make_tuple(whaleroute::RouteAccess::Open, false),
+        std::make_tuple(whaleroute::RouteAccess::Authorized, true),
+        std::make_tuple(whaleroute::RouteAccess::Authorized, false),
+        std::make_tuple(whaleroute::RouteAccess::Forbidden, true),
+        std::make_tuple(whaleroute::RouteAccess::Forbidden, false)
+));
