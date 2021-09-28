@@ -7,7 +7,7 @@
 namespace whaleroute::detail{
 
 template <typename TRequestProcessor>
-class RequestProcessorSet{
+class RequestProcessorInstancer{
 public:
     template <typename TProcessor>
     TRequestProcessor& get()
@@ -24,7 +24,7 @@ public:
     }
 
     template <typename TProcessor, typename... TArgs>
-    TRequestProcessor& get(TArgs&&...args)
+    TRequestProcessor& get(TArgs&&... args)
     {
         static_assert(std::is_base_of_v<TRequestProcessor, TProcessor>, "TProcessor must be a subclass of TRequestProcessor");
 

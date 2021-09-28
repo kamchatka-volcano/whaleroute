@@ -54,6 +54,7 @@ TEST_F(RouterWithoutProcessorAndResponseValue, MultipleRoutes)
     route("/page0", RequestType::GET).process([](auto&, auto& response){ response.data = "Default page";});
     route(std::regex{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.data = "Some page";});
     route("/upload", RequestType::POST).process([](auto&, auto& response){ response.data = "OK";});
+    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.data = "Any!";});
     route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};
@@ -81,6 +82,9 @@ TEST_F(RouterWithoutProcessorAndResponseValue, MultipleRoutes)
 
     processRequest(RequestType::POST, "/foo");
     checkResponse("404");
+
+    processRequest(RequestType::POST, "/any");
+    checkResponse("Any!");
 }
 
 }

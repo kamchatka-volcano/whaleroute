@@ -101,7 +101,7 @@ void processUnmatchedRequest(const Request&, Response& response) final
 response.data = "NO_MATCH";
 }
 
-void setResponse(Response& response, const ResponseValue& value) final
+void setResponseValue(Response& response, const ResponseValue& value) final
 {
 state_.activated = true;
 response.data = value.data;
@@ -146,6 +146,16 @@ route("/", RequestType::GET, accessType_).process(makeProcessor([](const Request
 
 processRequest(RequestType::GET, "/");
 checkResponse("Hello world");
+}
+
+TEST_P(AccessTestingRouter, ProcessAnyRequestType)
+{
+    route("/", whaleroute::_{}, accessType_).process(makeProcessor([](const Request&, Response& response) {
+        response.data = "Hello world";
+    }));
+
+    processRequest(RequestType::POST, "/");
+    checkResponse("Hello world");
 }
 
 TEST_P(AccessTestingRouter, ProcessWithRegexp)

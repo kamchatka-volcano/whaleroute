@@ -1,49 +1,14 @@
 #pragma once
-#include "detail/requestprocessorset.h"
-#include "detail/irequestrouter.h"
 #include "types.h"
+#include "detail/requestprocessorinstancer.h"
+#include "detail/irequestrouter.h"
 #include "detail/route.h"
 #include <regex>
 
 namespace whaleroute{
 
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using EnabledRequestProcessorDisabledRequestType = std::conditional_t<std::is_same_v<TResponseValue, _>,
-        detail::IRequestRouterWithoutResponseSetterAndRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        detail::IRequestRouterWithoutRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using DisabledRequestProcessorDisabledRequestType = std::conditional_t<std::is_same_v<TResponseValue, _>,
-        detail::IRequestRouterWithoutRequestProcessorAndResponseSetterAndRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        detail::IRequestRouterWithoutRequestProcessorAndRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using EnabledRequestProcessor = std::conditional_t<std::is_same_v<TResponseValue, _>,
-        detail::IRequestRouterWithoutResponseSetter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using DisabledRequestProcessor = std::conditional_t<std::is_same_v<TResponseValue, _>,
-        detail::IRequestRouterWithoutRequestProcessorAndResponseSetter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        detail::IRequestRouterWithoutRequestProcessor<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using EnabledRequestType = std::conditional_t<std::is_same_v<TRequestProcessor, _>,
-        DisabledRequestProcessor<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        EnabledRequestProcessor<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using DisabledRequestType = std::conditional_t<std::is_same_v<TRequestProcessor, _>,
-        DisabledRequestProcessorDisabledRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        EnabledRequestProcessorDisabledRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
-template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-using RequestRouterInterface = std::conditional_t<std::is_same_v<TRequestType, _>,
-        DisabledRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>,
-        EnabledRequestType<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>>;
-
 template <typename TRequest, typename TResponse, typename TRequestType = _, typename TRequestProcessor = _, typename TResponseValue = _>
-class RequestRouter : public RequestRouterInterface<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue> {
+class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue> {
     using TRoute = detail::Route<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
     struct PathRouteMatch{
         std::unordered_map<std::string, TRoute> authorizedRouteMap;
@@ -52,7 +17,7 @@ class RequestRouter : public RequestRouterInterface<TRequest, TResponse, TReques
     };
 
     struct RegExpRouteMatch{
-        RegExpRouteMatch(detail::RequestProcessorSet<TRequestProcessor>& requestProcessorSet,
+        RegExpRouteMatch(detail::RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet,
                          detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
             : authorizedRoute(requestProcessorSet, router)
             , forbiddenRoute(requestProcessorSet, router)
@@ -85,7 +50,7 @@ class RequestRouter : public RequestRouterInterface<TRequest, TResponse, TReques
     };
 
     struct RouteMatch{
-        RouteMatch(detail::RequestProcessorSet<TRequestProcessor>& requestProcessorSet,
+        RouteMatch(detail::RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet,
                    detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
             : regExp(requestProcessorSet, router)
         {}
@@ -105,14 +70,14 @@ public:
     }
 
     template<typename T = TRequestType>
-    auto route(const std::string& path, TRequestType requestType,
+    auto route(const std::string& path, detail::RouteRequestType<TRequestType> requestType,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
         if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
             routeMatchList_.emplace_back(requestProcessorSet_, *this);
 
         auto& match = routeMatchList_.back().path;
-        auto matchRoute = [](TRoute& route, TRequestType type) -> TRoute& {
+        auto matchRoute = [](auto& route, auto type) -> TRoute& {
             route.setRequestType(type);
             return route;
         };
@@ -140,7 +105,7 @@ public:
             routeMatchList_.emplace_back(requestProcessorSet_, *this);
 
         auto& match = routeMatchList_.back().path;
-        auto matchRoute = [](TRoute& route, TRequestType type) -> TRoute& {
+        auto matchRoute = [](auto& route, auto type) -> TRoute& {
             route.setRequestType(type);
             return route;
         };
@@ -161,13 +126,13 @@ public:
     }
 
     template<typename T = TRequestType>
-    auto route(const std::regex& regExp, TRequestType requestType,
+    auto route(const std::regex& regExp, detail::RouteRequestType<TRequestType> requestType,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
         routeMatchList_.emplace_back(requestProcessorSet_, *this);
         auto& match = routeMatchList_.back().regExp;
         match.setRegexp(regExp);
-        auto matchRoute = [](TRoute& route, TRequestType type) -> TRoute&{
+        auto matchRoute = [](auto& route, auto type) -> TRoute&{
             route.setRequestType(type);
             return route;
         };
@@ -188,7 +153,7 @@ public:
         routeMatchList_.emplace_back(requestProcessorSet_, *this);
         auto& match = routeMatchList_.back().regExp;
         match.setRegexp(regExp);
-        auto matchRoute = [](TRoute& route, TRequestType type) -> TRoute&{
+        auto matchRoute = [](auto& route, auto type) -> TRoute&{
             route.setRequestType(type);
             return route;
         };
@@ -273,7 +238,7 @@ private:
 private:
     std::vector<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
-    detail::RequestProcessorSet<TRequestProcessor> requestProcessorSet_;
+    detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorSet_;
 };
 
 }

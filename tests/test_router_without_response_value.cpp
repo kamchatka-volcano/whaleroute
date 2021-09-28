@@ -1,11 +1,11 @@
 #include "common.h"
-#include <whaleroute/types.h>
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
+namespace without_response_value {
 
-class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<Request, Response, RequestType, RequestProcessor, std::string> {
+class RouterWithoutResponseValue : public ::testing::Test,
+                                   public whaleroute::RequestRouter<Request, Response, RequestType, RequestProcessor> {
 public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {
@@ -24,6 +24,7 @@ protected:
     {
         return request.requestPath;
     }
+
     RequestType getRequestType(const Request& request) final
     {
         return request.type;
@@ -32,10 +33,6 @@ protected:
     void processUnmatchedRequest(const Request&, Response& response) final
     {
         response.data = "NO_MATCH";
-    }
-    void setResponseValue(Response& response, const std::string& value) final
-    {
-        response.data = value;
     }
 
     void callRequestProcessor(RequestProcessor& processor, const Request& request, Response& response) final
@@ -47,8 +44,7 @@ protected:
     std::string responseData_;
 };
 
-class StatelessRouteProcessor : public RequestProcessor
-{
+class StatelessRouteProcessor : public RequestProcessor {
     void process(const Request& request, Response& response) override
     {
         if (!request.name.empty())
@@ -58,14 +54,15 @@ class StatelessRouteProcessor : public RequestProcessor
     }
 };
 
-TEST_F(Router, StatelessRouteProcessor){
+TEST_F(RouterWithoutResponseValue, StatelessRouteProcessor)
+{
     route("/greet", RequestType::GET).process<StatelessRouteProcessor>();
     auto processor = StatelessRouteProcessor{};
     route("/greet2", RequestType::GET).process(processor);
-    route("/", RequestType::GET).set("Hello world");
     route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.data = "Any!";});
+    route("/", RequestType::GET).process([](auto&, auto& response){ response.data = "Hello world";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
-    route().set("/404");
+    route().process([](auto&, auto& response){ response.data = "/404";});
 
     processRequest(RequestType::GET, "/");
     checkResponse("Hello world");
@@ -86,15 +83,14 @@ TEST_F(Router, StatelessRouteProcessor){
     checkResponse("Any!");
 }
 
-struct NameState{
+struct NameState {
     std::string name;
 };
 
-class StatefulRouteProcessor : public RequestProcessor
-{
+class StatefulRouteProcessor : public RequestProcessor {
 public:
     StatefulRouteProcessor(NameState& state)
-        : state_(state)
+            : state_(state)
     {}
 
     void process(const Request& request, Response& response) override
@@ -102,24 +98,22 @@ public:
         if (request.requestPath == "/config" && !request.name.empty())
             state_.name = request.name;
 
-        if (request.requestPath == "/" || request.requestPath == "/test"){
+        if (request.requestPath == "/" || request.requestPath == "/test") {
             if (state_.name.empty())
-                response.data  = "OK";
+                response.data = "OK";
             else
                 response.data = "Hello " + state_.name;
-        }
-        else
-            response.data =  "/";
+        } else
+            response.data = "/";
     }
 
     NameState& state_;
 };
 
-class NameSetterRouteProcessor : public RequestProcessor
-{
+class NameSetterRouteProcessor : public RequestProcessor {
 public:
     NameSetterRouteProcessor(NameState& state)
-        : state_(state)
+            : state_(state)
     {}
 
     void process(const Request&, Response&) override
@@ -131,7 +125,8 @@ private:
     NameState& state_;
 };
 
-TEST_F(Router, StatefulRouteProcessor){
+TEST_F(RouterWithoutResponseValue, StatefulRouteProcessor)
+{
     NameState state;
     auto processor = StatefulRouteProcessor{state};
     route(std::regex{R"(.*)"}, RequestType::GET).process(processor);
@@ -146,7 +141,8 @@ TEST_F(Router, StatefulRouteProcessor){
     checkResponse("Hello foo");
 }
 
-TEST_F(Router, ChainedRouteProcessor){
+TEST_F(RouterWithoutResponseValue, ChainedRouteProcessor)
+{
     NameState state;
     auto processor = StatefulRouteProcessor{state};
     auto nameProcessor = NameSetterRouteProcessor{state};
@@ -156,11 +152,10 @@ TEST_F(Router, ChainedRouteProcessor){
     checkResponse("Hello TEST");
 }
 
-class CounterRouteProcessor : public RequestProcessor
-{
+class CounterRouteProcessor : public RequestProcessor {
 public:
     CounterRouteProcessor(int& state)
-        : state_(state)
+            : state_(state)
     {}
 
     void process(const Request&, Response& response) override
@@ -174,7 +169,8 @@ private:
     int& state_;
 };
 
-TEST_F(Router, TemplateProcessorInMultipleRoutes){
+TEST_F(RouterWithoutResponseValue, TemplateProcessorInMultipleRoutes)
+{
     int state = 0;
     route("/test", RequestType::GET).process<CounterRouteProcessor>(state);
     route("/test2", RequestType::GET).process<CounterRouteProcessor>(state);
@@ -184,3 +180,4 @@ TEST_F(Router, TemplateProcessorInMultipleRoutes){
     ASSERT_EQ(state, 2); //Which means that both route shares the same processor object
 }
 
+}

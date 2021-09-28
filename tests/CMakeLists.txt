@@ -16,7 +16,14 @@ include_directories(${GTEST_INCLUDE_DIRS}, ..)
 
 set(SRC
     test_router.cpp
-    test_router_without_processor.cpp router_without_response_value.cpp test_access.cpp router_without_processor_and_response_value.cpp router_without_processor_and_request_type_and_response_value.cpp)
+    test_router_without_processor.cpp
+    test_router_without_response_value.cpp
+    test_access.cpp
+    test_router_without_processor_and_response_value.cpp
+    test_router_without_processor_and_request_type_and_response_value.cpp
+    test_router_without_processor_and_request_type.cpp
+    test_router_without_request_type_and_response_value.cpp
+    test_router_without_request_type.cpp)
 
 add_executable(${PROJECT_NAME} ${SRC})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)

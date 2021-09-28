@@ -1,5 +1,6 @@
 #pragma once
 #include "irequestrouter.h"
+#include "routerequesttype.h"
 #include <whaleroute/types.h>
 #include <functional>
 #include <vector>
@@ -12,38 +13,9 @@ class RequestRouter;
 }
 
 namespace whaleroute::detail{
-template<typename TRequestType>
-class RouteRequestType{
-public:
-    template <typename T = TRequestType, typename = std::enable_if_t<!std::is_same_v<T, _>>>
-    RouteRequestType(TRequestType type)
-        : requestType_(type)
-        , isAny_(false)
-    {}
-
-    RouteRequestType(_)
-        : isAny_(true)
-    {}
-
-    operator TRequestType() const
-    {
-        return requestType_;
-    }
-
-    bool isAny() const
-    {
-        return isAny_;
-    }
-
-
-private:
-    TRequestType requestType_;
-    bool isAny_;
-};
-
 
 template <typename TRequestProcessor>
-class RequestProcessorSet;
+class RequestProcessorInstancer;
 
 template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
 class Route{    
@@ -52,7 +24,7 @@ class Route{
     using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
 
 public:
-    Route(RequestProcessorSet<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
+    Route(RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
         : requestType_(_{})
         , requestProcessorSet_(requestProcessorSet)
         , router_(router)
@@ -118,7 +90,7 @@ public:
         auto processor = std::make_tuple(requestType_,
                                          [responseValue, this](const TRequest&, TResponse& response) mutable
                                          {
-                                             router_.setResponse(response, responseValue);
+                                             router_.setResponseValue(response, responseValue);
                                          });
         processorList_.emplace_back(std::move(processor));
     }
@@ -129,7 +101,8 @@ private:
         requestType_ = requestType;
     }
 
-    bool processRequest(const TRequest &request, TResponse& response)
+    template<typename T = TRequestType>
+    auto processRequest(const TRequest &request, TResponse& response) -> std::enable_if_t<!std::is_same_v<T, _>, bool>
     {
         auto matched = false;
         for (auto& processor : processorList_){
@@ -143,10 +116,22 @@ private:
         return matched;
     }
 
+    template<typename T = TRequestType>
+    auto processRequest(const TRequest &request, TResponse& response) -> std::enable_if_t<std::is_same_v<T, _>, bool>
+    {
+        auto matched = false;
+        for (auto& processor : processorList_){
+            auto[requestType, processingFunc] = processor;
+            processingFunc(request, response);
+            matched = true;
+        }
+        return matched;
+    }
+
 private:
     RouteRequestType<TRequestType> requestType_;
     std::vector<Processor> processorList_;
-    RequestProcessorSet<TRequestProcessor>& requestProcessorSet_;
+    RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet_;
     IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router_;
 };
 
