@@ -24,9 +24,9 @@ class Route{
     using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
 
 public:
-    Route(RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
+    Route(RequestProcessorInstancer<TRequestProcessor>& requestProcessorInstancer, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
         : requestType_(_{})
-        , requestProcessorSet_(requestProcessorSet)
+        , requestProcessorInstancer_(requestProcessorInstancer)
         , router_(router)
     {
     }
@@ -35,7 +35,7 @@ public:
     auto process() -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        auto& requestProcessor = requestProcessorSet_.template get<TProcessor>();
+        auto& requestProcessor = requestProcessorInstancer_.template get<TProcessor>();
         auto processor = std::make_tuple(requestType_,
                                          [&requestProcessor, this](const TRequest& request, TResponse& response)
                                          {
@@ -49,7 +49,7 @@ public:
     auto process(TArgs&&... args) -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        auto& requestProcessor = requestProcessorSet_.template get<TProcessor>(std::forward<TArgs>(args)...);
+        auto& requestProcessor = requestProcessorInstancer_.template get<TProcessor>(std::forward<TArgs>(args)...);
         auto processor = std::make_tuple(requestType_,
                                          [&requestProcessor, this](const TRequest& request, TResponse& response)
                                          {
@@ -131,7 +131,7 @@ private:
 private:
     RouteRequestType<TRequestType> requestType_;
     std::vector<Processor> processorList_;
-    RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet_;
+    RequestProcessorInstancer<TRequestProcessor>& requestProcessorInstancer_;
     IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router_;
 };
 

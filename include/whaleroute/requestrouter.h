@@ -65,8 +65,10 @@ class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TReques
 
 public:
     RequestRouter()
-       : noMatchRoute_(requestProcessorSet_, *this)
+       : noMatchRoute_(requestProcessorInstancer_, *this)
     {
+        if constexpr(!std::is_same_v<TRequestProcessor, whaleroute::_>)
+            static_assert(std::has_virtual_destructor_v<TRequestProcessor>, "TRequestProcessor must have a virtual destructor");
     }
 
     template<typename T = TRequestType>
@@ -74,7 +76,7 @@ public:
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
         if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(requestProcessorSet_, *this);
+            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
 
         auto& match = routeMatchList_.back().path;
         auto matchRoute = [](auto& route, auto type) -> TRoute& {
@@ -83,15 +85,15 @@ public:
         };
         switch (access) {
             case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, requestType);
             }
             case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, requestType);
             }
             default: {
-                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, requestType);
             }
         }
@@ -102,7 +104,7 @@ public:
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<std::is_same_v<T, _>, TRoute&>
     {
         if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(requestProcessorSet_, *this);
+            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
 
         auto& match = routeMatchList_.back().path;
         auto matchRoute = [](auto& route, auto type) -> TRoute& {
@@ -111,15 +113,15 @@ public:
         };
         switch (access) {
             case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, _{});
             }
             case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, _{});
             }
             default: {
-                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorSet_, *this)).first->second;
+                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
                 return matchRoute(route, _{});
             }
         }
@@ -129,7 +131,7 @@ public:
     auto route(const std::regex& regExp, detail::RouteRequestType<TRequestType> requestType,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
-        routeMatchList_.emplace_back(requestProcessorSet_, *this);
+        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
         auto& match = routeMatchList_.back().regExp;
         match.setRegexp(regExp);
         auto matchRoute = [](auto& route, auto type) -> TRoute&{
@@ -150,7 +152,7 @@ public:
     auto route(const std::regex& regExp,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<std::is_same_v<T, _>, TRoute&>
     {
-        routeMatchList_.emplace_back(requestProcessorSet_, *this);
+        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
         auto& match = routeMatchList_.back().regExp;
         match.setRegexp(regExp);
         auto matchRoute = [](auto& route, auto type) -> TRoute&{
@@ -238,7 +240,7 @@ private:
 private:
     std::vector<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
-    detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorSet_;
+    detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorInstancer_;
 };
 
 }

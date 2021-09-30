@@ -23,5 +23,6 @@ struct ResponseValue{
 
 class RequestProcessor{
 public:
+    virtual ~RequestProcessor() = default;
     virtual void process(const Request&, Response&){}
 };
