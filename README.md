@@ -1,5 +1,6 @@
-# whaleroute
-
+<p align="center">
+  <img height="192" src="doc/logo.png"/>  
+</p>
 
 **whaleroute** - is a C++17 header-only library for request routing. It's designed for binding handlers to HTTP requests, but it can easily be used with other protocols, as the library is implemented as a generic class template.
 If your incoming data processing function has a signature like `void(const Request&, Response&)` and you need to perform different actions based on a string value from the request object, **whaleroute** can be a big help.  
