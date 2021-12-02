@@ -31,20 +31,6 @@ public:
     {
     }
 
-    template<typename TProcessor, typename T = TRequestProcessor>
-    auto process() -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
-    {
-        static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        auto& requestProcessor = requestProcessorInstancer_.template get<TProcessor>();
-        auto processor = std::make_tuple(requestType_,
-                                         [&requestProcessor, this](const TRequest& request, TResponse& response)
-                                         {
-                                             router_.callRequestProcessor(requestProcessor, request, response);
-                                         });
-        processorList_.emplace_back(std::move(processor));
-        return *this;
-    }
-
     template<typename TProcessor, typename T = TRequestProcessor, typename... TArgs>
     auto process(TArgs&&... args) -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
     {

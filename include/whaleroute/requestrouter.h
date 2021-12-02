@@ -72,101 +72,32 @@ public:
     }
 
     template<typename T = TRequestType>
-    auto route(const std::string& path, detail::RouteRequestType<TRequestType> requestType,
+    auto route(const std::string& path,
+               detail::RouteRequestType<TRequestType> requestType,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
-        if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
-
-        auto& match = routeMatchList_.back().path;
-        auto matchRoute = [](auto& route, auto type) -> TRoute& {
-            route.setRequestType(type);
-            return route;
-        };
-        switch (access) {
-            case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
-            }
-            case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
-            }
-            default: {
-                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
-            }
-        }
+        return stringRouteImpl(path, requestType, access);
     }
 
     template<typename T = TRequestType>
     auto route(const std::string& path,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<std::is_same_v<T, _>, TRoute&>
     {
-        if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
-
-        auto& match = routeMatchList_.back().path;
-        auto matchRoute = [](auto& route, auto type) -> TRoute& {
-            route.setRequestType(type);
-            return route;
-        };
-        switch (access) {
-            case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, _{});
-            }
-            case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, _{});
-            }
-            default: {
-                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, _{});
-            }
-        }
+        return stringRouteImpl(path, _{}, access);
     }
 
     template<typename T = TRequestType>
     auto route(const std::regex& regExp, detail::RouteRequestType<TRequestType> requestType,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
     {
-        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
-        auto& match = routeMatchList_.back().regExp;
-        match.setRegexp(regExp);
-        auto matchRoute = [](auto& route, auto type) -> TRoute&{
-            route.setRequestType(type);
-            return route;
-        };
-        switch (access){
-            case RouteAccess::Authorized:
-                return matchRoute(match.authorizedRoute, requestType);
-            case RouteAccess::Forbidden:
-                return matchRoute(match.forbiddenRoute, requestType);
-            default:
-                return matchRoute(match.openRoute, requestType);
-        }
+        return regexRouteImpl(regExp, requestType, access);
     }
 
     template<typename T = TRequestType>
     auto route(const std::regex& regExp,
                RouteAccess access = RouteAccess::Open) -> std::enable_if_t<std::is_same_v<T, _>, TRoute&>
     {
-        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
-        auto& match = routeMatchList_.back().regExp;
-        match.setRegexp(regExp);
-        auto matchRoute = [](auto& route, auto type) -> TRoute&{
-            route.setRequestType(type);
-            return route;
-        };
-        switch (access){
-            case RouteAccess::Authorized:
-                return matchRoute(match.authorizedRoute, _{});
-            case RouteAccess::Forbidden:
-                return matchRoute(match.forbiddenRoute, _{});
-            default:
-                return matchRoute(match.openRoute, _{});
-        }
+        return regexRouteImpl(regExp, _{}, access);
     }
 
     TRoute& route()
@@ -193,6 +124,55 @@ public:
     }
 
 private:
+    TRoute& stringRouteImpl(const std::string& path,
+                            detail::RouteRequestType<TRequestType> requestType,
+                            RouteAccess access = RouteAccess::Open)
+    {
+        if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
+            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
+
+        auto& match = routeMatchList_.back().path;
+        auto matchRoute = [](auto& route, auto type) -> TRoute& {
+            route.setRequestType(type);
+            return route;
+        };
+        switch (access) {
+            case RouteAccess::Authorized: {
+                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
+                return matchRoute(route, requestType);
+            }
+            case RouteAccess::Forbidden: {
+                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
+                return matchRoute(route, requestType);
+            }
+            default: {
+                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
+                return matchRoute(route, requestType);
+            }
+        }
+    }
+
+    TRoute& regexRouteImpl(const std::regex& regExp,
+                            detail::RouteRequestType<TRequestType> requestType,
+                            RouteAccess access = RouteAccess::Open)
+    {
+        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
+        auto& match = routeMatchList_.back().regExp;
+        match.setRegexp(regExp);
+        auto matchRoute = [](auto& route, auto type) -> TRoute&{
+            route.setRequestType(type);
+            return route;
+        };
+        switch (access){
+            case RouteAccess::Authorized:
+                return matchRoute(match.authorizedRoute, requestType);
+            case RouteAccess::Forbidden:
+                return matchRoute(match.forbiddenRoute, requestType);
+            default:
+                return matchRoute(match.openRoute, requestType);
+        }
+    }
+
     bool processMatch(PathRouteMatch& match, const TRequest& request, TResponse& response)
     {
         const auto requestPath = this->getRequestPath(request);
