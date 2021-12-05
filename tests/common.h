@@ -16,6 +16,7 @@ struct Request{
 };
 struct Response{
     std::string data;
+    bool wasSent = false;
 };
 struct ResponseValue{
     std::string data;

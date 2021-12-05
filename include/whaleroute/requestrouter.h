@@ -109,11 +109,11 @@ public:
     {
         for (auto& match : routeMatchList_){
             if (match.isRegExp()){
-                if (processMatch(match.regExp, request, response))
+                if (processMatch(match.regExp, request, response) && isRouteProcessingFinished(request, response))
                     return;
             }
             else{
-                if (processMatch(match.path, request, response))
+                if (processMatch(match.path, request, response) && isRouteProcessingFinished(request, response))
                     return;
             }
         }
@@ -213,6 +213,11 @@ private:
     }
 
     virtual bool isAccessAuthorized(const TRequest&) const
+    {
+        return true;
+    }
+
+    virtual bool isRouteProcessingFinished(const TRequest&, TResponse&) const
     {
         return true;
     }

@@ -23,7 +23,8 @@ set(SRC
     test_router_without_processor_and_request_type_and_response_value.cpp
     test_router_without_processor_and_request_type.cpp
     test_router_without_request_type_and_response_value.cpp
-    test_router_without_request_type.cpp)
+    test_router_without_request_type.cpp
+    test_multirouter.cpp)
 
 add_executable(${PROJECT_NAME} ${SRC})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
