@@ -10,8 +10,9 @@ public:
     void processRequest(RequestType type, const std::string& path)
     {
         auto response = Response{};
+        response.init();
         process(Request{type, path}, response);
-        responseData_ = response.data;
+        responseData_ = response.state->data;
     }
 
     void checkResponse(const std::string& expectedResponseData)
@@ -27,7 +28,7 @@ protected:
 
     void processUnmatchedRequest(const Request&, Response& response) final
     {
-        response.data = "NO_MATCH";
+        response.state->data = "NO_MATCH";
     }
 
 protected:
@@ -36,8 +37,8 @@ protected:
 
 TEST_F(RouterWithoutProcessorAndRequestTypeAndResponseValue, NoMatchRouteText)
 {
-    route("/").process([](auto&, auto& response){ response.data = "Hello world"; });
-    route().process([](auto&, auto& response){ response.data = "Not found";});
+    route("/").process([](auto&, auto& response){ response.state->data = "Hello world"; });
+    route().process([](auto&, auto& response){ response.state->data = "Not found";});
     processRequest(RequestType::GET, "/foo");
 
     checkResponse("Not found");
@@ -45,16 +46,16 @@ TEST_F(RouterWithoutProcessorAndRequestTypeAndResponseValue, NoMatchRouteText)
 
 TEST_F(RouterWithoutProcessorAndRequestTypeAndResponseValue, MultipleRoutes)
 {
-    route("/").process([](auto&, auto& response){ response.data = "Hello world";});
-    route("/page0").process([](auto&, auto& response){ response.data = "Default page";});
-    route(std::regex{R"(/page\d*)"}).process([](auto&, auto& response){ response.data = "Some page";});
-    route("/upload").process([](auto&, auto& response){ response.data = "OK";});
+    route("/").process([](auto&, auto& response){ response.state->data = "Hello world";});
+    route("/page0").process([](auto&, auto& response){ response.state->data = "Default page";});
+    route(std::regex{R"(/page\d*)"}).process([](auto&, auto& response){ response.state->data = "Some page";});
+    route("/upload").process([](auto&, auto& response){ response.state->data = "OK";});
     route(std::regex{R"(/files/.*\.xml)"}).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};
-                response.data = fileContent;
+                response.state->data = fileContent;
             });
-    route().process([](auto&, auto& response){ response.data = "404";});
+    route().process([](auto&, auto& response){ response.state->data = "404";});
 
     processRequest(RequestType::POST, "/");
     checkResponse("Hello world");

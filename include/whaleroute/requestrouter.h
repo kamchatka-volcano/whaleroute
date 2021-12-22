@@ -1,8 +1,10 @@
 #pragma once
 #include "types.h"
+#include "requestprocessorqueue.h"
 #include "detail/requestprocessorinstancer.h"
 #include "detail/irequestrouter.h"
 #include "detail/route.h"
+#include "detail/utils.h"
 #include <regex>
 
 namespace whaleroute{
@@ -107,23 +109,91 @@ public:
 
     void process(const TRequest& request, TResponse& response)
     {
-        for (auto& match : routeMatchList_){
-            if (match.isRegExp()){
-                if (processMatch(match.regExp, request, response) && isRouteProcessingFinished(request, response))
-                    return;
+        auto queue = makeRequestProcessorQueue(request, response);
+        queue.launch();
+    }
+
+    RequestProcessorQueue makeRequestProcessorQueue(const TRequest& request, TResponse& response)
+    {
+        auto requestProcessorInvokerList = std::vector<std::function<std::optional<bool>()>>{};
+        for (auto& match : routeMatchList_) {
+            if (match.isRegExp() && match.regExp.matches(this->getRequestPath(request))) {
+                detail::concat(requestProcessorInvokerList,
+                               makeRequestProcessorInvokerList(match.regExp.openRoute.getRequestProcessor(request, response), request, response));
+                detail::concat(requestProcessorInvokerList,
+                               makeRequestProcessorInvokerList(match.regExp.authorizedRoute.getRequestProcessor(request, response), request, response, true));
+                detail::concat(requestProcessorInvokerList,
+                               makeRequestProcessorInvokerList(match.regExp.forbiddenRoute.getRequestProcessor(request, response), request, response, false));
             }
-            else{
-                if (processMatch(match.path, request, response) && isRouteProcessingFinished(request, response))
-                    return;
+            else {
+                const auto requestPath = this->getRequestPath(request);
+                if (match.path.openRouteMap.count(requestPath))
+                    detail::concat(requestProcessorInvokerList,
+                                   makeRequestProcessorInvokerList(
+                                           match.path.openRouteMap.at(requestPath).getRequestProcessor(
+                                                   request, response), request, response));
+
+                if (match.path.authorizedRouteMap.count(requestPath))
+                    detail::concat(requestProcessorInvokerList,
+                                   makeRequestProcessorInvokerList(
+                                           match.path.authorizedRouteMap.at(requestPath).getRequestProcessor(
+                                                   request, response), request, response, true));
+
+                if (match.path.forbiddenRouteMap.count(requestPath))
+                    detail::concat(requestProcessorInvokerList,
+                                   makeRequestProcessorInvokerList(
+                                           match.path.forbiddenRouteMap.at(requestPath).getRequestProcessor(
+                                                   request, response), request, response, false));
+
             }
         }
-        if (noMatchRoute_.processRequest(request, response))
-            return;
 
-        this->processUnmatchedRequest(request, response);
+        for (const auto& processor : noMatchRoute_.getRequestProcessor(request, response))
+            requestProcessorInvokerList.emplace_back([request, response, processor, this]() mutable -> std::optional<bool>{
+                processor(request, response);
+                return false;
+            });
+
+        if (requestProcessorInvokerList.empty())
+            requestProcessorInvokerList.emplace_back([request, response, this]() mutable -> std::optional<bool>{
+                this->processUnmatchedRequest(request, response);
+                return false;
+            });
+
+        return RequestProcessorQueue{requestProcessorInvokerList,
+                                     [this, request, response]() mutable {
+                                         this->processUnmatchedRequest(request, response);
+                                     }};
     }
 
 private:
+    std::vector<std::function<std::optional<bool>()>> makeRequestProcessorInvokerList(
+            const std::vector<std::function<void(const TRequest&, TResponse&)>>& processorList,
+            const TRequest& request,
+            TResponse& response,
+            std::optional<bool> checkAuthorizationState = {})
+    {
+        auto result = std::vector<std::function<std::optional<bool>()>>{};
+        for (const auto& processor : processorList) {
+            auto checkIfFinished = (&processor == &processorList.back());
+            result.emplace_back([request, response, processor, checkIfFinished, checkAuthorizationState, this]() mutable -> std::optional<bool>{
+                if (!checkAuthorizationState)
+                    processor(request, response);
+                else {
+                    if (isAccessAuthorized(request) == *checkAuthorizationState)
+                        processor(request, response);
+                    else
+                        return std::nullopt;
+                }
+                if (checkIfFinished)
+                    return !isRouteProcessingFinished(request, response);
+                else
+                    return true;
+            });
+        }
+        return result;
+    };
+
     TRoute& stringRouteImpl(const std::string& path,
                             detail::RouteRequestType<TRequestType> requestType,
                             RouteAccess access = RouteAccess::Open)
@@ -171,45 +241,6 @@ private:
             default:
                 return matchRoute(match.openRoute, requestType);
         }
-    }
-
-    bool processMatch(PathRouteMatch& match, const TRequest& request, TResponse& response)
-    {
-        const auto requestPath = this->getRequestPath(request);
-        if (match.openRouteMap.count(requestPath)){
-            if (match.openRouteMap.at(requestPath).processRequest(request, response))
-                return true;
-        }
-
-        if (isAccessAuthorized(request) && match.authorizedRouteMap.count(requestPath)){
-            if (match.authorizedRouteMap.at(requestPath).processRequest(request, response))
-                return true;
-        }
-
-        if (!isAccessAuthorized(request) && match.forbiddenRouteMap.count(requestPath)){
-            if (match.forbiddenRouteMap.at(requestPath).processRequest(request, response))
-                return true;
-        }
-        return false;
-    }
-
-    bool processMatch(RegExpRouteMatch& match, const TRequest& request, TResponse& response)
-    {
-        if (!match.matches(this->getRequestPath(request)))
-            return false;
-
-        if (match.openRoute.processRequest(request, response))
-            return true;
-
-        if (isAccessAuthorized(request)){
-            if (match.authorizedRoute.processRequest(request, response))
-                return true;
-        }
-        else{
-            if(match.forbiddenRoute.processRequest(request, response))
-                return true;
-        }
-        return false;
     }
 
     virtual bool isAccessAuthorized(const TRequest&) const

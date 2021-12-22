@@ -88,30 +88,28 @@ private:
     }
 
     template<typename T = TRequestType>
-    auto processRequest(const TRequest &request, TResponse& response) -> std::enable_if_t<!std::is_same_v<T, _>, bool>
+    auto getRequestProcessor(const TRequest &request, TResponse& response) -> std::enable_if_t<!std::is_same_v<T, _>, std::vector<ProcessingFunc>>
     {
-        auto matched = false;
+        auto result = std::vector<ProcessingFunc>{};
         for (auto& processor : processorList_){
             auto[requestType, processingFunc] = processor;
             if (requestType.isAny() ||
                 requestType == router_.getRequestType(request)){
-                processingFunc(request, response);
-                matched = true;
+                result.emplace_back(std::move(processingFunc));
             }
         }
-        return matched;
+        return result;
     }
 
     template<typename T = TRequestType>
-    auto processRequest(const TRequest &request, TResponse& response) -> std::enable_if_t<std::is_same_v<T, _>, bool>
+    auto getRequestProcessor(const TRequest &request, TResponse& response) -> std::enable_if_t<std::is_same_v<T, _>, std::vector<ProcessingFunc>>
     {
-        auto matched = false;
+        auto result = std::vector<ProcessingFunc>{};
         for (auto& processor : processorList_){
             auto[requestType, processingFunc] = processor;
-            processingFunc(request, response);
-            matched = true;
+            result.emplace_back(std::move(processingFunc));
         }
-        return matched;
+        return result;
     }
 
 private:

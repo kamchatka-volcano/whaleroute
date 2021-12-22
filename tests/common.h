@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <memory>
 
 struct TestState{
     bool activated = false;
@@ -15,8 +16,15 @@ struct Request{
     std::string name;
 };
 struct Response{
-    std::string data;
-    bool wasSent = false;
+    void init()
+    {
+        state = std::make_shared<State>();
+    }
+    struct State {
+        std::string data;
+        bool wasSent = false;
+    };
+    std::shared_ptr<State> state;
 };
 struct ResponseValue{
     std::string data;
