@@ -10,8 +10,9 @@ public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {
         auto response = Response{};
+        response.init();
         process(Request{type, path, name}, response);
-        responseData_ = response.data;
+        responseData_ = response.state->data;
     }
 
     void checkResponse(const std::string& expectedResponseData)
@@ -31,12 +32,12 @@ protected:
 
     void processUnmatchedRequest(const Request&, Response& response) final
     {
-        response.data = "NO_MATCH";
+        response.state->data = "NO_MATCH";
     }
     void setResponseValue(Response& response, const std::string& value) final
     {
-        response.data = value;
-        response.wasSent = true;
+        response.state->data = value;
+        response.state->wasSent = true;
     }
 
     void callRequestProcessor(RequestProcessor& processor, const Request& request, Response& response) final
@@ -46,7 +47,7 @@ protected:
 
     bool isRouteProcessingFinished(const Request&, Response& response) const final
     {
-        return response.wasSent;
+        return response.state->wasSent;
     }
 
 protected:
@@ -56,11 +57,11 @@ protected:
 TEST_F(MultiRouter, MultiRouteTest)
 {
     route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto& request, auto& response) {
-        response.data = "Hello";
+        response.state->data = "Hello";
     });
     route("/greet/world", RequestType::GET).process([](const auto& request, auto& response) {
-        response.data += " world";
-        response.wasSent = true;
+        response.state->data += " world";
+        response.state->wasSent = true;
     });
     route("/", RequestType::GET).set("Hello Bill");
     route().set("/404");
@@ -77,12 +78,12 @@ TEST_F(MultiRouter, MultiRouteTestWithChaining)
 {
     auto testState = std::string{};
     route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto& request, auto& response) {
-        response.data = "Hello";
+        response.state->data = "Hello";
     });
     route("/greet/world", RequestType::GET)
     .process([](const auto& request, auto& response) {
-        response.data += " world";
-        response.wasSent = true;
+        response.state->data += " world";
+        response.state->wasSent = true;
     }).process([&testState](const auto& request, auto& response) {
         testState = "TEST";
     });

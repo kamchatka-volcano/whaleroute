@@ -18,8 +18,9 @@ state_.activated = false;
 void processRequest(RequestType type, const std::string& path)
 {
     auto response = Response{};
+    response.init();
     process(Request{type, path}, response);
-    responseData_ = response.data;
+    responseData_ = response.state->data;
 }
 
 void expectNoMatch()
@@ -98,13 +99,13 @@ return request.type;
 
 void processUnmatchedRequest(const Request&, Response& response) final
 {
-response.data = "NO_MATCH";
+    response.state->data = "NO_MATCH";
 }
 
 void setResponseValue(Response& response, const ResponseValue& value) final
 {
-state_.activated = true;
-response.data = value.data;
+    state_.activated = true;
+    response.state->data = value.data;
 }
 
 std::function<void(const Request&, Response& response)>
@@ -141,7 +142,7 @@ checkResponse("Hello world");
 TEST_P(AccessTestingRouter, Process)
 {
 route("/", RequestType::GET, accessType_).process(makeProcessor([](const Request&, Response& response) {
-    response.data = "Hello world";
+    response.state->data = "Hello world";
 }));
 
 processRequest(RequestType::GET, "/");
@@ -151,7 +152,7 @@ checkResponse("Hello world");
 TEST_P(AccessTestingRouter, ProcessAnyRequestType)
 {
     route("/", whaleroute::_{}, accessType_).process(makeProcessor([](const Request&, Response& response) {
-        response.data = "Hello world";
+        response.state->data = "Hello world";
     }));
 
     processRequest(RequestType::POST, "/");
@@ -162,7 +163,7 @@ TEST_P(AccessTestingRouter, ProcessWithRegexp)
 {
 route(std::regex{R"(/page\d*)"}, RequestType::GET, accessType_).process(
         makeProcessor([](const Request&, Response& response) {
-    response.data = "Hello world";
+    response.state->data = "Hello world";
 }));
 
 processRequest(RequestType::GET, "/page123");

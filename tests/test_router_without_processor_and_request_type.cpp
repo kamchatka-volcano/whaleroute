@@ -10,8 +10,9 @@ public:
     void processRequest(RequestType type, const std::string& path)
     {
         auto response = Response{};
+        response.init();
         process(Request{type, path}, response);
-        responseData_ = response.data;
+        responseData_ = response.state->data;
     }
 
     void checkResponse(const std::string& expectedResponseData)
@@ -27,12 +28,12 @@ protected:
 
     void processUnmatchedRequest(const Request&, Response& response) final
     {
-        response.data = "NO_MATCH";
+        response.state->data = "NO_MATCH";
     }
 
     void setResponseValue(Response& response, const std::string& value) final
     {
-        response.data = value;
+        response.state->data = value;
     }
 
 protected:
@@ -57,7 +58,7 @@ TEST_F(RouterWithoutProcessorAndRequestType, MultipleRoutes)
     route(std::regex{R"(/files/.*\.xml)"}).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};
-                response.data = fileContent;
+                response.state->data = fileContent;
             });
     route().set("404");
 

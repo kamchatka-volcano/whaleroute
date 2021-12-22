@@ -10,8 +10,9 @@ public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {
         auto response = Response{};
+        response.init();
         process(Request{type, path, name}, response);
-        responseData_ = response.data;
+        responseData_ = response.state->data;
     }
 
     void checkResponse(const std::string& expectedResponseData)
@@ -31,11 +32,11 @@ protected:
 
     void processUnmatchedRequest(const Request&, Response& response) final
     {
-        response.data = "NO_MATCH";
+        response.state->data = "NO_MATCH";
     }
     void setResponseValue(Response& response, const std::string& value) final
     {
-        response.data = value;
+        response.state->data = value;
     }
 
     void callRequestProcessor(RequestProcessor& processor, const Request& request, Response& response) final
@@ -52,9 +53,9 @@ class StatelessRouteProcessor : public RequestProcessor
     void process(const Request& request, Response& response) override
     {
         if (!request.name.empty())
-            response.data = "Hello " + request.name;
+            response.state->data = "Hello " + request.name;
         else
-            response.data = "/name-not-found";
+            response.state->data = "/name-not-found";
     }
 };
 
@@ -63,7 +64,7 @@ TEST_F(Router, StatelessRouteProcessor){
     auto processor = StatelessRouteProcessor{};
     route("/greet2", RequestType::GET).process(processor);
     route("/", RequestType::GET).set("Hello world");
-    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.data = "Any!";});
+    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.state->data = "Any!";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
     route().set("/404");
 
@@ -104,12 +105,12 @@ public:
 
         if (request.requestPath == "/" || request.requestPath == "/test"){
             if (state_.name.empty())
-                response.data  = "OK";
+                response.state->data  = "OK";
             else
-                response.data = "Hello " + state_.name;
+                response.state->data = "Hello " + state_.name;
         }
         else
-            response.data =  "/";
+            response.state->data =  "/";
     }
 
     NameState& state_;
@@ -166,7 +167,7 @@ public:
     void process(const Request&, Response& response) override
     {
         state_ = ++counter;
-        response.data = "TEST";
+        response.state->data = "TEST";
     }
 
 private:

@@ -10,8 +10,9 @@ public:
     void processRequest(RequestType type, const std::string& path)
     {
         auto response = Response{};
+        response.init();
         process(Request{type, path}, response);
-        responseData_ = response.data;
+        responseData_ = response.state->data;
     }
 
     void checkResponse(const std::string& expectedResponseData)
@@ -32,7 +33,7 @@ protected:
 
     void processUnmatchedRequest(const Request&, Response& response) final
     {
-        response.data = "NO_MATCH";
+        response.state->data = "NO_MATCH";
     }
 
 protected:
@@ -41,8 +42,8 @@ protected:
 
 TEST_F(RouterWithoutProcessorAndResponseValue, NoMatchRouteText)
 {
-    route("/", RequestType::GET).process([](auto&, auto& response){ response.data = "Hello world"; });
-    route().process([](auto&, auto& response){ response.data = "Not found";});
+    route("/", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Hello world"; });
+    route().process([](auto&, auto& response){ response.state->data = "Not found";});
     processRequest(RequestType::GET, "/foo");
 
     checkResponse("Not found");
@@ -50,17 +51,17 @@ TEST_F(RouterWithoutProcessorAndResponseValue, NoMatchRouteText)
 
 TEST_F(RouterWithoutProcessorAndResponseValue, MultipleRoutes)
 {
-    route("/", RequestType::GET).process([](auto&, auto& response){ response.data = "Hello world";});
-    route("/page0", RequestType::GET).process([](auto&, auto& response){ response.data = "Default page";});
-    route(std::regex{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.data = "Some page";});
-    route("/upload", RequestType::POST).process([](auto&, auto& response){ response.data = "OK";});
-    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.data = "Any!";});
+    route("/", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Hello world";});
+    route("/page0", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Default page";});
+    route(std::regex{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.state->data = "Some page";});
+    route("/upload", RequestType::POST).process([](auto&, auto& response){ response.state->data = "OK";});
+    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.state->data = "Any!";});
     route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};
-                response.data = fileContent;
+                response.state->data = fileContent;
             });
-    route().process([](auto&, auto& response){ response.data = "404";});
+    route().process([](auto&, auto& response){ response.state->data = "404";});
 
     processRequest(RequestType::GET, "/");
     checkResponse("Hello world");
