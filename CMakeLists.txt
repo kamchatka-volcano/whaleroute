@@ -12,7 +12,6 @@ project(whaleroute VERSION 1.0.0 DESCRIPTION "C++17 request routing library")
 
 add_library(whaleroute INTERFACE)
 target_compile_features(whaleroute INTERFACE cxx_std_17)
-set_target_properties(whaleroute PROPERTIES CXX_EXTENSIONS OFF)
 
 target_include_directories(
         whaleroute
