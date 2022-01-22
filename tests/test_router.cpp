@@ -85,6 +85,9 @@ TEST_F(Router, StatelessRouteProcessor){
 
     processRequest(RequestType::POST, "/any");
     checkResponse("Any!");
+
+    processRequest(RequestType::POST, "/any/");
+    checkResponse("Any!");
 }
 
 struct NameState{

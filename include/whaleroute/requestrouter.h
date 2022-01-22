@@ -126,7 +126,10 @@ public:
                                makeRequestProcessorInvokerList(match.regExp.forbiddenRoute.getRequestProcessor(request, response), request, response, false));
             }
             else {
-                const auto requestPath = this->getRequestPath(request);
+                auto requestPath = this->getRequestPath(request);
+                if (requestPath != "/" && !requestPath.empty() && requestPath.back() == '/')
+                    requestPath.pop_back();
+
                 if (match.path.openRouteMap.count(requestPath))
                     detail::concat(requestProcessorInvokerList,
                                    makeRequestProcessorInvokerList(
@@ -202,22 +205,25 @@ private:
             routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
 
         auto& match = routeMatchList_.back().path;
-        auto matchRoute = [](auto& route, auto type) -> TRoute& {
-            route.setRequestType(type);
-            return route;
-        };
+        auto routePath = path;
+        if (!routePath.empty() && routePath != "/" && routePath.back() == '/')
+            routePath.pop_back();
+
         switch (access) {
             case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
+                auto& route = match.authorizedRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                route.setRequestType(requestType);
+                return route;
             }
             case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
+                auto& route = match.forbiddenRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                route.setRequestType(requestType);
+                return route;
             }
             default: {
-                auto& route = match.openRouteMap.emplace(path, TRoute(requestProcessorInstancer_, *this)).first->second;
-                return matchRoute(route, requestType);
+                auto& route = match.openRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                route.setRequestType(requestType);
+                return route;
             }
         }
     }
