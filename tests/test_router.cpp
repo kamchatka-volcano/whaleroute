@@ -88,6 +88,10 @@ TEST_F(Router, StatelessRouteProcessor){
 
     processRequest(RequestType::POST, "/any/");
     checkResponse("Any!");
+
+    setTrailingSlashMode(whaleroute::TrailingSlashMode::Strict);
+    processRequest(RequestType::POST, "/any/");
+    checkResponse("/404");
 }
 
 struct NameState{

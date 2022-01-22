@@ -9,6 +9,11 @@
 
 namespace whaleroute{
 
+enum class TrailingSlashMode{
+    Optional,
+    Strict
+};
+
 template <typename TRequest, typename TResponse, typename TRequestType = _, typename TRequestProcessor = _, typename TResponseValue = _>
 class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue> {
     using TRoute = detail::Route<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
@@ -73,6 +78,11 @@ public:
             static_assert(std::has_virtual_destructor_v<TRequestProcessor>, "TRequestProcessor must have a virtual destructor");
     }
 
+    void setTrailingSlashMode(TrailingSlashMode mode)
+    {
+        trailingSlashMode_ = mode;
+    }
+
     template<typename T = TRequestType>
     auto route(const std::string& path,
                detail::RouteRequestType<TRequestType> requestType,
@@ -127,7 +137,8 @@ public:
             }
             else {
                 auto requestPath = this->getRequestPath(request);
-                if (requestPath != "/" && !requestPath.empty() && requestPath.back() == '/')
+                if (trailingSlashMode_ == TrailingSlashMode::Optional &&
+                        requestPath != "/" && !requestPath.empty() && requestPath.back() == '/')
                     requestPath.pop_back();
 
                 if (match.path.openRouteMap.count(requestPath))
@@ -206,7 +217,8 @@ private:
 
         auto& match = routeMatchList_.back().path;
         auto routePath = path;
-        if (!routePath.empty() && routePath != "/" && routePath.back() == '/')
+        if (trailingSlashMode_ == TrailingSlashMode::Optional &&
+                !routePath.empty() && routePath != "/" && routePath.back() == '/')
             routePath.pop_back();
 
         switch (access) {
@@ -263,6 +275,7 @@ private:
     std::vector<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
     detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorInstancer_;
+    TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
 };
 
 }
