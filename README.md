@@ -5,7 +5,21 @@
 **whaleroute** - is a C++17 header-only library for request routing. It's designed for binding handlers to HTTP requests, but it can easily be used with other protocols, as the library is implemented as a generic class template.
 If your incoming data processing function has a signature like `void(const Request&, Response&)` and you need to perform different actions based on a string value from the request object, **whaleroute** can be a big help.  
 
-### Usage
+
+* [Usage](#implementing-the-router)
+  * [Implementing the router](#implementing-the-router)  
+  * [Registering the request type](#registering-the-request-type)  
+  * [Registering the request processing class](#registering-the-request-processing-class)  
+  * [Registering the response value setter](#registering-the-response-value-setter)  
+  * [Using regular expressions](#using-regular-expressions)
+  * [Trailing slash matching](#trailing-slash-matching)
+  * [Processing unmatched requests](#processing-unmatched-requests)  
+  * [Authorization](#authorization)
+  * [Using RequestProcessorQueue](#using-requestprocessorqueue)
+* [Installation](#installation)
+* [Running tests](#running-tests)
+* [License](#license)
+
 #### Implementing the router  
 Let's say that our Request and Response classes look like this:
 ```c++
@@ -209,6 +223,10 @@ Router's `route` method can take a standard regular expression instead of a stri
 router.route(std::regex{"/.*"}, demo::Request::Method::GET).set("HTTP/1.1 200 OK\r\n\r\n");
 ```
 
+#### Trailing slash matching
+By default **whaleroute** treats trailing slashes in requests and routes paths as optional, e.g. `/path` and `/path/` are considered equal.  
+You can change this by using a `whaleroute::RequestRouter`'s method `setTrailingSlashMode` with a value `whaleroute::TrailingSlashMode::Strict`.  
+
 #### Processing unmatched requests
 Using the `route` method without arguments registers a processor for requests that don't match any existing routes. It's an alternative of a `processUnmatchedRequest` virtual method, it won't be called if you use a `route()` instead.
 ```c++
@@ -272,6 +290,15 @@ Now we can set up the router with authorization settings:
 
 Now any request to the URI starting with `/vip/` will get a 401 response status. 
 
+#### Using RequestProcessorQueue
+If you check how `whaleroute::RequestRouter`'s processing method `process` is implemented, you'll see that it just creates a `whale::RequestProcessorQueue` object and forwards processing request by calling its `launch` method:
+```c++
+    auto queue = makeRequestProcessorQueue(request, response);
+    queue.launch();
+```
+`whaleroute::RequestProcessorQueue` is a sequence of all matched route processors, that can be launched and stopped by calling its `launch()` and `stop()` methods.
+It's available in the public interface, so you can create and use `RequestProcessorQueue` directly, without using `RequestRouter::process` method. It can be really helpful if you use **whaleroute** in asynchronous environment - this way route processing can be postponed by stopping the queue and resumed in request handler's callback on a captured copy of the queue.
+Otherwise, you can disregard this information and just use `RequestRouter::process` method.
 
 ### Installation
 Download and link the library from your project's CMakeLists.txt:
@@ -284,10 +311,12 @@ FetchContent_Declare(whaleroute
     GIT_REPOSITORY "https://github.com/kamchatka-volcano/whaleroute.git"
     GIT_TAG "origin/master"
 )
+#uncomment if you need to install whaleroot with your target
+#set(INSTALL_WHALEROOT ON)
 FetchContent_MakeAvailable(whaleroute)
 
 add_executable(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE whaleroute)
+target_link_libraries(${PROJECT_NAME} PRIVATE whaleroute::whaleroute)
 ```
 
 For the system-wide installation use these commands:
@@ -297,6 +326,12 @@ cd whaleroute
 cmake -S . -B build
 cmake --build build
 cmake --install build
+```
+
+Afterwards, you can use find_package() command to make installed library available inside your project:
+```
+find_package(whaleroute 1.0.0 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE whaleroute::whaleroute)
 ```
 
 ### Running tests
