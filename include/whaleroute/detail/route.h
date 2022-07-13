@@ -18,7 +18,7 @@ template <typename TRequestProcessor>
 class RequestProcessorInstancer;
 
 template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
-class Route{    
+class Route{
     friend class RequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
     using ProcessingFunc = std::function<void(const TRequest&, TResponse&)>;
     using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
@@ -88,7 +88,7 @@ private:
     }
 
     template<typename T = TRequestType>
-    auto getRequestProcessor(const TRequest &request, TResponse& response) -> std::enable_if_t<!std::is_same_v<T, _>, std::vector<ProcessingFunc>>
+    auto getRequestProcessor(const TRequest &request, TResponse&) -> std::enable_if_t<!std::is_same_v<T, _>, std::vector<ProcessingFunc>>
     {
         auto result = std::vector<ProcessingFunc>{};
         for (auto& processor : processorList_){
@@ -102,7 +102,7 @@ private:
     }
 
     template<typename T = TRequestType>
-    auto getRequestProcessor(const TRequest &request, TResponse& response) -> std::enable_if_t<std::is_same_v<T, _>, std::vector<ProcessingFunc>>
+    auto getRequestProcessor(const TRequest &, TResponse&) -> std::enable_if_t<std::is_same_v<T, _>, std::vector<ProcessingFunc>>
     {
         auto result = std::vector<ProcessingFunc>{};
         for (auto& processor : processorList_){

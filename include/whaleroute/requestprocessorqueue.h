@@ -24,7 +24,7 @@ public:
             if (!result)
                 unmatchedRequestHandler_();
             else if (!*result){
-                currentIndex_ = static_cast<int>(requestProcessorInvokers_.size()) + 1;
+                currentIndex_ = requestProcessorInvokers_.size() + 1;
                 break;
             }
         }
@@ -36,7 +36,7 @@ public:
     }
 
 private:
-    int currentIndex_ = 0;
+    std::size_t currentIndex_ = 0;
     bool isStopped_ = false;
     std::vector<std::function<std::optional<bool>()>> requestProcessorInvokers_;
     std::function<void()> unmatchedRequestHandler_;
