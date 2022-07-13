@@ -11,7 +11,7 @@ public:
     {
         auto response = Response{};
         response.init();
-        process(Request{type, path}, response);
+        process(Request{type, path, {}}, response);
         responseData_ = response.state->data;
     }
 
@@ -58,7 +58,7 @@ TEST_F(RouterWithoutProcessor, MultipleRoutes)
 {
     route("/", RequestType::GET).set("Hello world");
     route("/page0", RequestType::GET).set("Default page");
-    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.state->data = "Any!";});
+    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
     route(std::regex{R"(/page\d*)"}, RequestType::GET).set("Some page");
     route("/upload", RequestType::POST).set("OK");
     route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(

@@ -19,7 +19,7 @@ void processRequest(RequestType type, const std::string& path)
 {
     auto response = Response{};
     response.init();
-    process(Request{type, path}, response);
+    process(Request{type, path, {}}, response);
     responseData_ = response.state->data;
 }
 

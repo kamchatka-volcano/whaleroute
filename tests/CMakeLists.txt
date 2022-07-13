@@ -10,10 +10,6 @@ find_package(Threads REQUIRED)
 include(CheckPIESupported)
 check_pie_supported()
 
-
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS}, ..)
-
 set(SRC
     test_router.cpp
     test_router_without_processor.cpp
@@ -26,10 +22,10 @@ set(SRC
     test_router_without_request_type.cpp
     test_multirouter.cpp)
 
-add_executable(${PROJECT_NAME} ${SRC})
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE OFF)
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PRIVATE ../include/)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES} Threads::Threads)
+add_executable(test_whaleroute ${SRC})
+target_compile_features(test_whaleroute PUBLIC cxx_std_17)
+set_target_properties(test_whaleroute PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(test_whaleroute PROPERTIES POSITION_INDEPENDENT_CODE OFF)
+
+add_test(NAME test_whaleroute COMMAND test_whaleroute)
+target_link_libraries(test_whaleroute PRIVATE ${GTEST_BOTH_LIBRARIES} Threads::Threads whaleroute::whaleroute)

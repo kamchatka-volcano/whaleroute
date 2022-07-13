@@ -92,8 +92,8 @@ public:
     }
 
     template<typename T = TRequestType>
-    auto route(const std::string& path,
-               RouteAccess access = RouteAccess::Open) -> std::enable_if_t<std::is_same_v<T, _>, TRoute&>
+    TRoute& route(const std::string& path,
+               RouteAccess access = RouteAccess::Open)//-> std::enable_if_t<std::is_same_v<T, _>, TRoute&> //
     {
         return stringRouteImpl(path, _{}, access);
     }
@@ -163,7 +163,7 @@ public:
         }
 
         for (const auto& processor : noMatchRoute_.getRequestProcessor(request, response))
-            requestProcessorInvokerList.emplace_back([request, response, processor, this]() mutable -> std::optional<bool>{
+            requestProcessorInvokerList.emplace_back([request, response, processor]() mutable -> std::optional<bool>{
                 processor(request, response);
                 return false;
             });

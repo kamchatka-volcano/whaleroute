@@ -11,7 +11,7 @@ public:
     {
         auto response = Response{};
         response.init();
-        process(Request{type, path}, response);
+        process(Request{type, path, {}}, response);
         responseData_ = response.state->data;
     }
 
@@ -42,11 +42,18 @@ protected:
 
 TEST_F(RouterWithoutProcessorAndResponseValue, NoMatchRouteText)
 {
+    route("/test").process([](auto&, auto& response){ response.state->data = "Any type"; });
     route("/", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Hello world"; });
     route().process([](auto&, auto& response){ response.state->data = "Not found";});
-    processRequest(RequestType::GET, "/foo");
 
+    processRequest(RequestType::GET, "/foo");
     checkResponse("Not found");
+
+    processRequest(RequestType::GET, "/test");
+    checkResponse("Any type");
+
+    processRequest(RequestType::POST, "/test");
+    checkResponse("Any type");
 }
 
 TEST_F(RouterWithoutProcessorAndResponseValue, MultipleRoutes)
@@ -55,7 +62,7 @@ TEST_F(RouterWithoutProcessorAndResponseValue, MultipleRoutes)
     route("/page0", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Default page";});
     route(std::regex{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.state->data = "Some page";});
     route("/upload", RequestType::POST).process([](auto&, auto& response){ response.state->data = "OK";});
-    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.state->data = "Any!";});
+    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
     route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
             [](const Request&, Response& response) {
                 auto fileContent = std::string{"testXML"};

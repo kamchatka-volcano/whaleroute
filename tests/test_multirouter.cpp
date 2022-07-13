@@ -56,10 +56,10 @@ protected:
 
 TEST_F(MultiRouter, MultiRouteTest)
 {
-    route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto& request, auto& response) {
+    route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto&, auto& response) {
         response.state->data = "Hello";
     });
-    route("/greet/world", RequestType::GET).process([](const auto& request, auto& response) {
+    route("/greet/world", RequestType::GET).process([](const auto&, auto& response) {
         response.state->data += " world";
         response.state->wasSent = true;
     });
@@ -77,14 +77,14 @@ TEST_F(MultiRouter, MultiRouteTest)
 TEST_F(MultiRouter, MultiRouteTestWithChaining)
 {
     auto testState = std::string{};
-    route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto& request, auto& response) {
+    route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto&, auto& response) {
         response.state->data = "Hello";
     });
     route("/greet/world", RequestType::GET)
-    .process([](const auto& request, auto& response) {
+    .process([](const auto&, auto& response) {
         response.state->data += " world";
         response.state->wasSent = true;
-    }).process([&testState](const auto& request, auto& response) {
+    }).process([&testState](const auto&, auto&) {
         testState = "TEST";
     });
     route("/", RequestType::GET).set("Hello Bill");

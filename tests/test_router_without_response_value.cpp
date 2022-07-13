@@ -60,7 +60,7 @@ TEST_F(RouterWithoutResponseValue, StatelessRouteProcessor)
     route("/greet", RequestType::GET).process<StatelessRouteProcessor>();
     auto processor = StatelessRouteProcessor{};
     route("/greet2", RequestType::GET).process(processor);
-    route("/any", whaleroute::_{}).process([](const Request& request, Response& response){ response.state->data = "Any!";});
+    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
     route("/", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Hello world";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
     route().process([](auto&, auto& response){ response.state->data = "/404";});
