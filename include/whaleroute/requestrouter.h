@@ -1,7 +1,6 @@
 #pragma once
 #include "types.h"
 #include "requestprocessorqueue.h"
-#include "detail/requestprocessorinstancer.h"
 #include "detail/irequestrouter.h"
 #include "detail/route.h"
 #include "detail/utils.h"
@@ -25,11 +24,10 @@ class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TReques
     };
 
     struct RegExpRouteMatch{
-        RegExpRouteMatch(detail::RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet,
-                         detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
-            : authorizedRoute(requestProcessorSet, router)
-            , forbiddenRoute(requestProcessorSet, router)
-            , openRoute(requestProcessorSet, router)
+        RegExpRouteMatch(detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
+            : authorizedRoute{router}
+            , forbiddenRoute{router}
+            , openRoute{router}
         {}
 
         void setRegexp(const std::regex& regex)
@@ -58,9 +56,8 @@ class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TReques
     };
 
     struct RouteMatch{
-        RouteMatch(detail::RequestProcessorInstancer<TRequestProcessor>& requestProcessorSet,
-                   detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
-            : regExp(requestProcessorSet, router)
+        RouteMatch(detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
+            : regExp{router}
         {}
         PathRouteMatch path;
         RegExpRouteMatch regExp;
@@ -73,7 +70,7 @@ class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TReques
 
 public:
     RequestRouter()
-       : noMatchRoute_(requestProcessorInstancer_, *this)
+       : noMatchRoute_{*this}
     {
         if constexpr(!std::is_same_v<TRequestProcessor, whaleroute::_>)
             static_assert(std::has_virtual_destructor_v<TRequestProcessor>, "TRequestProcessor must have a virtual destructor");
@@ -212,7 +209,7 @@ private:
                             RouteAccess access = RouteAccess::Open)
     {
         if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
+            routeMatchList_.emplace_back(*this);
 
         auto& match = routeMatchList_.back().path;
         auto routePath = path;
@@ -222,17 +219,17 @@ private:
 
         switch (access) {
             case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                auto& route = match.authorizedRouteMap.emplace(routePath, TRoute{*this}).first->second;
                 route.setRequestType(requestType);
                 return route;
             }
             case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                auto& route = match.forbiddenRouteMap.emplace(routePath, TRoute{*this}).first->second;
                 route.setRequestType(requestType);
                 return route;
             }
             default: {
-                auto& route = match.openRouteMap.emplace(routePath, TRoute(requestProcessorInstancer_, *this)).first->second;
+                auto& route = match.openRouteMap.emplace(routePath, TRoute{*this}).first->second;
                 route.setRequestType(requestType);
                 return route;
             }
@@ -243,7 +240,7 @@ private:
                             detail::RouteRequestType<TRequestType> requestType,
                             RouteAccess access = RouteAccess::Open)
     {
-        routeMatchList_.emplace_back(requestProcessorInstancer_, *this);
+        routeMatchList_.emplace_back(*this);
         auto& match = routeMatchList_.back().regExp;
         match.setRegexp(regExp);
         auto matchRoute = [](auto& route, auto type) -> TRoute&{
@@ -273,7 +270,6 @@ private:
 private:
     std::deque<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
-    detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorInstancer_;
     TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
 };
 

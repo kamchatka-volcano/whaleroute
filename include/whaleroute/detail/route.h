@@ -14,9 +14,6 @@ class RequestRouter;
 
 namespace whaleroute::detail{
 
-template <typename TRequestProcessor>
-class RequestProcessorInstancer;
-
 template <typename TRequest, typename TResponse, typename TRequestType, typename TRequestProcessor, typename TResponseValue>
 class Route{
     friend class RequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
@@ -24,10 +21,9 @@ class Route{
     using Processor = std::tuple<RouteRequestType<TRequestType>, ProcessingFunc>;
 
 public:
-    Route(RequestProcessorInstancer<TRequestProcessor>& requestProcessorInstancer, IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
-        : requestType_(_{})
-        , requestProcessorInstancer_(requestProcessorInstancer)
-        , router_(router)
+    Route(IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
+        : requestType_{_{}}
+        , router_{router}
     {
     }
 
@@ -35,11 +31,11 @@ public:
     auto process(TArgs&&... args) -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
     {
         static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        auto& requestProcessor = requestProcessorInstancer_.template get<TProcessor>(std::forward<TArgs>(args)...);
+        requestProcessor_ = std::make_unique<TProcessor>(std::forward<TArgs>(args)...);
         auto processor = std::make_tuple(requestType_,
-                                         [&requestProcessor, this](const TRequest& request, TResponse& response)
+                                         [this](const TRequest& request, TResponse& response)
                                          {
-                                             router_.callRequestProcessor(requestProcessor, request, response);
+                                             router_.callRequestProcessor(*requestProcessor_, request, response);
                                          });
         processorList_.emplace_back(std::move(processor));
         return *this;
@@ -115,7 +111,7 @@ private:
 private:
     RouteRequestType<TRequestType> requestType_;
     std::vector<Processor> processorList_;
-    RequestProcessorInstancer<TRequestProcessor>& requestProcessorInstancer_;
+    std::unique_ptr<TRequestProcessor> requestProcessor_;
     IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router_;
 };
 

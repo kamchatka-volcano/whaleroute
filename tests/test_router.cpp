@@ -193,6 +193,6 @@ TEST_F(Router, TemplateProcessorInMultipleRoutes){
 
     processRequest(RequestType::GET, "/test");
     processRequest(RequestType::GET, "/test2");
-    ASSERT_EQ(state, 2); //Which means that both route shares the same processor object
+    ASSERT_EQ(state, 1); //Which means that routes contain different processor objects
 }
 

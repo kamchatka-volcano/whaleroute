@@ -7,11 +7,12 @@ class RouteRequestType {
 public:
     template<typename T = TRequestType, typename = std::enable_if_t<!std::is_same_v<T, _>>>
     RouteRequestType(TRequestType type)
-            : requestType_(type), isAny_(false)
+        : requestType_{type}
+        , isAny_{false}
     {}
 
     RouteRequestType(_)
-            : isAny_(true)
+        : isAny_{true}
     {}
 
     operator TRequestType() const

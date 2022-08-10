@@ -9,8 +9,8 @@ class RequestProcessorQueue{
 public:
     explicit RequestProcessorQueue(std::vector<std::function<std::optional<bool>()>> requestProcessorInvokers,
                                    std::function<void()> unmatchedRequestHandler)
-        : requestProcessorInvokers_(std::move(requestProcessorInvokers))
-        , unmatchedRequestHandler_(std::move(unmatchedRequestHandler))
+        : requestProcessorInvokers_{std::move(requestProcessorInvokers)}
+        , unmatchedRequestHandler_{std::move(unmatchedRequestHandler)}
     {}
     RequestProcessorQueue() = default;
 
