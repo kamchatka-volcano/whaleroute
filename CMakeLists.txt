@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(whaleroute VERSION 1.0.2 DESCRIPTION "C++17 request routing library")
+project(whaleroute VERSION 1.0.3 DESCRIPTION "C++17 request routing library")
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(WHALEROUTE_SUBPROJECT OFF)

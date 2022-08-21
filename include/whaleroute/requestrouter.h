@@ -5,6 +5,7 @@
 #include "detail/irequestrouter.h"
 #include "detail/route.h"
 #include "detail/utils.h"
+#include <deque>
 #include <regex>
 
 namespace whaleroute{
@@ -270,7 +271,7 @@ private:
     }
 
 private:
-    std::vector<RouteMatch> routeMatchList_;
+    std::deque<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
     detail::RequestProcessorInstancer<TRequestProcessor> requestProcessorInstancer_;
     TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
