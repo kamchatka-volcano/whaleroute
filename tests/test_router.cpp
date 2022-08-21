@@ -66,6 +66,7 @@ TEST_F(Router, StatelessRouteProcessor){
     route("/", RequestType::GET).set("Hello world");
     route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
+    route(std::regex{"/greet2/.*"}).process<StatelessRouteProcessor>();
     route().set("/404");
 
     processRequest(RequestType::GET, "/");
@@ -78,6 +79,9 @@ TEST_F(Router, StatelessRouteProcessor){
     checkResponse("/name-not-found");
 
     processRequest(RequestType::GET, "/greet/foo", "foo");
+    checkResponse("Hello foo");
+
+    processRequest(RequestType::POST, "/greet2/foo", "foo");
     checkResponse("Hello foo");
 
     processRequest(RequestType::POST, "/foo");
