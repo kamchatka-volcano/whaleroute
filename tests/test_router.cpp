@@ -3,9 +3,35 @@
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
+namespace whaleroute{
+template<typename TRequest, typename TResponse>
+struct RouteSpecificationPredicate<int, TRequest, TResponse> {
+    bool operator()(int value, const TRequest& request, TResponse&) const
+    {
+        return value == static_cast<int>(request.type);
+    }
+};
+
+template<typename TRequest, typename TResponse>
+struct RouteSpecificationPredicate<std::string, TRequest, TResponse> {
+    bool operator()(std::string value, const TRequest& request, TResponse&) const
+    {
+        return value == request.name;
+    }
+};
+
+template<typename TRequest, typename TResponse>
+struct RouteSpecificationPredicate<RequestType, TRequest, TResponse> {
+    bool operator()(RequestType value, const TRequest& request, TResponse&) const
+    {
+        return value == request.type;
+    }
+};
+
+}
 
 class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<Request, Response, RequestType, RequestProcessor, std::string> {
+               public whaleroute::RequestRouter<Request, Response, RequestProcessor, std::string> {
 public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {
@@ -24,10 +50,6 @@ protected:
     std::string getRequestPath(const Request& request) final
     {
         return request.requestPath;
-    }
-    RequestType getRequestType(const Request& request) final
-    {
-        return request.type;
     }
 
     void processUnmatchedRequest(const Request&, Response& response) final
@@ -64,7 +86,7 @@ TEST_F(Router, StatelessRouteProcessor){
     auto processor = StatelessRouteProcessor{};
     route("/greet2", RequestType::GET).process(processor);
     route("/", RequestType::GET).set("Hello world");
-    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
+    route("/any").process([](const Request&, Response& response){ response.state->data = "Any!";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
     route(std::regex{"/greet2/.*"}).process<StatelessRouteProcessor>();
     route().set("/404");

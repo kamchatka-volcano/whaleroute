@@ -2,10 +2,20 @@
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
+namespace whaleroute {
+template<typename TRequest, typename TResponse>
+struct RouteSpecificationPredicate<RequestType, TRequest, TResponse> {
+    bool operator()(RequestType value, const TRequest& request, TResponse&) const
+    {
+        return value == request.type;
+    }
+};
+}
+
 namespace without_response_value {
 
 class RouterWithoutResponseValue : public ::testing::Test,
-                                   public whaleroute::RequestRouter<Request, Response, RequestType, RequestProcessor> {
+                                   public whaleroute::RequestRouter<Request, Response, RequestProcessor> {
 public:
     void processRequest(RequestType type, const std::string& path, const std::string& name = {})
     {
@@ -24,11 +34,6 @@ protected:
     std::string getRequestPath(const Request& request) final
     {
         return request.requestPath;
-    }
-
-    RequestType getRequestType(const Request& request) final
-    {
-        return request.type;
     }
 
     void processUnmatchedRequest(const Request&, Response& response) final
@@ -60,7 +65,7 @@ TEST_F(RouterWithoutResponseValue, StatelessRouteProcessor)
     route("/greet", RequestType::GET).process<StatelessRouteProcessor>();
     auto processor = StatelessRouteProcessor{};
     route("/greet2", RequestType::GET).process(processor);
-    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
+    route("/any").process([](const Request&, Response& response){ response.state->data = "Any!";});
     route("/", RequestType::GET).process([](auto&, auto& response){ response.state->data = "Hello world";});
     route(std::regex{"/greet/.*"}, RequestType::GET).process<StatelessRouteProcessor>();
     route().process([](auto&, auto& response){ response.state->data = "/404";});

@@ -5,7 +5,7 @@
 namespace without_request_type {
 
 class RouterWithoutRequestType : public ::testing::Test,
-                                 public whaleroute::RequestRouter<Request, Response, whaleroute::_, RequestProcessor, std::string> {
+                                 public whaleroute::RequestRouter<Request, Response, RequestProcessor, std::string> {
 public:
     void processRequest(const std::string& path, const std::string& name = {})
     {

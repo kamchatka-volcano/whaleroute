@@ -6,6 +6,7 @@
 #include "detail/utils.h"
 #include <deque>
 #include <regex>
+#include <variant>
 
 namespace whaleroute{
 
@@ -14,63 +15,23 @@ enum class TrailingSlashMode{
     Strict
 };
 
-template <typename TRequest, typename TResponse, typename TRequestType = _, typename TRequestProcessor = _, typename TResponseValue = _>
-class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue> {
-    using TRoute = detail::Route<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>;
-    struct PathRouteMatch{
-        std::unordered_map<std::string, TRoute> authorizedRouteMap;
-        std::unordered_map<std::string, TRoute> forbiddenRouteMap;
-        std::unordered_map<std::string, TRoute> openRouteMap;
-    };
+template <typename TRequest, typename TResponse, typename TRequestProcessor = _, typename TResponseValue = _>
+class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue> {
+    using TRoute = detail::Route<TRequest, TResponse, TRequestProcessor, TResponseValue>;
 
     struct RegExpRouteMatch{
-        RegExpRouteMatch(detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
-            : authorizedRoute{router}
-            , forbiddenRoute{router}
-            , openRoute{router}
-        {}
-
-        void setRegexp(const std::regex& regex)
-        {
-            regExp_ = regex;
-            isValid_ = true;
-        }
-
-        bool isValid() const
-        {
-            return isValid_;
-        }
-
-        bool matches(const std::string& path)
-        {
-            return std::regex_match(path, regExp_);
-        }
-
-        TRoute authorizedRoute;
-        TRoute forbiddenRoute;
-        TRoute openRoute;
-
-    private:
-        bool isValid_ = false;
-        std::regex regExp_;
+        std::regex regExp;
+        TRoute route;
     };
-
-    struct RouteMatch{
-        RouteMatch(detail::IRequestRouter<TRequest, TResponse, TRequestType, TRequestProcessor, TResponseValue>& router)
-            : regExp{router}
-        {}
-        PathRouteMatch path;
-        RegExpRouteMatch regExp;
-        bool isRegExp() const
-        {
-            return regExp.isValid();
-        }
-
+    struct PathRouteMatch{
+        std::string path;
+        TRoute route;
     };
+    using RouteMatch = std::variant<RegExpRouteMatch, PathRouteMatch>;
 
 public:
     RequestRouter()
-       : noMatchRoute_{*this}
+       : noMatchRoute_{*this, {}}
     {
         if constexpr(!std::is_same_v<TRequestProcessor, whaleroute::_>)
             static_assert(std::has_virtual_destructor_v<TRequestProcessor>, "TRequestProcessor must have a virtual destructor");
@@ -81,31 +42,26 @@ public:
         trailingSlashMode_ = mode;
     }
 
-    template<typename T = TRequestType>
-    auto route(const std::string& path,
-               detail::RouteRequestType<TRequestType> requestType,
-               RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
+    template<typename... TRouteSpecificationArgs>
+    TRoute& route(const std::string& path, TRouteSpecificationArgs&&... spec)
     {
-        return stringRouteImpl(path, requestType, access);
+        return stringRouteImpl(path, {std::forward<TRouteSpecificationArgs>(spec)...});
     }
 
-    TRoute& route(const std::string& path,
-               RouteAccess access = RouteAccess::Open)
+    TRoute& route(const std::string& path)
     {
-        return stringRouteImpl(path, _{}, access);
+        return stringRouteImpl(path, {});
     }
 
-    template<typename T = TRequestType>
-    auto route(const std::regex& regExp, detail::RouteRequestType<TRequestType> requestType,
-               RouteAccess access = RouteAccess::Open) -> std::enable_if_t<!std::is_same_v<T, _>, TRoute&>
+    template<typename... TRouteSpecificationArgs>
+    TRoute& route(const std::regex& regExp, TRouteSpecificationArgs&&... spec)
     {
-        return regexRouteImpl(regExp, requestType, access);
+        return regexRouteImpl(regExp, {std::forward<TRouteSpecificationArgs>(spec)...});
     }
 
-    TRoute& route(const std::regex& regExp,
-               RouteAccess access = RouteAccess::Open)
+    TRoute& route(const std::regex& regExp)
     {
-        return regexRouteImpl(regExp, _{}, access);
+        return regexRouteImpl(regExp, {});
     }
 
     TRoute& route()
@@ -123,39 +79,28 @@ public:
     {
         auto requestProcessorInvokerList = std::vector<std::function<std::optional<bool>()>>{};
         for (auto& match : routeMatchList_) {
-            if (match.isRegExp() && match.regExp.matches(this->getRequestPath(request))) {
-                detail::concat(requestProcessorInvokerList,
-                               makeRequestProcessorInvokerList(match.regExp.openRoute.getRequestProcessor(request, response), request, response));
-                detail::concat(requestProcessorInvokerList,
-                               makeRequestProcessorInvokerList(match.regExp.authorizedRoute.getRequestProcessor(request, response), request, response, true));
-                detail::concat(requestProcessorInvokerList,
-                               makeRequestProcessorInvokerList(match.regExp.forbiddenRoute.getRequestProcessor(request, response), request, response, false));
-            }
-            else {
-                auto requestPath = this->getRequestPath(request);
-                if (trailingSlashMode_ == TrailingSlashMode::Optional &&
-                        requestPath != "/" && !requestPath.empty() && requestPath.back() == '/')
-                    requestPath.pop_back();
+            std::visit([&](auto& match){
+                using T = std::decay_t<decltype(match)>;
+                if constexpr(std::is_same_v<T, RegExpRouteMatch>){
+                    if (std::regex_match(this->getRequestPath(request), match.regExp))
+                        detail::concat(requestProcessorInvokerList,
+                                       makeRequestProcessorInvokerList(
+                                               match.route.getRequestProcessor(request, response), request, response));
 
-                if (match.path.openRouteMap.count(requestPath))
-                    detail::concat(requestProcessorInvokerList,
-                                   makeRequestProcessorInvokerList(
-                                           match.path.openRouteMap.at(requestPath).getRequestProcessor(
-                                                   request, response), request, response));
-
-                if (match.path.authorizedRouteMap.count(requestPath))
-                    detail::concat(requestProcessorInvokerList,
-                                   makeRequestProcessorInvokerList(
-                                           match.path.authorizedRouteMap.at(requestPath).getRequestProcessor(
-                                                   request, response), request, response, true));
-
-                if (match.path.forbiddenRouteMap.count(requestPath))
-                    detail::concat(requestProcessorInvokerList,
-                                   makeRequestProcessorInvokerList(
-                                           match.path.forbiddenRouteMap.at(requestPath).getRequestProcessor(
-                                                   request, response), request, response, false));
-
-            }
+                }
+                else if constexpr(std::is_same_v<T, PathRouteMatch>){
+                    auto requestPath = this->getRequestPath(request);
+                    if (trailingSlashMode_ == TrailingSlashMode::Optional &&
+                        requestPath != "/" &&
+                        !requestPath.empty() &&
+                        requestPath.back() == '/')
+                        requestPath.pop_back();
+                    if (match.path == requestPath)
+                        detail::concat(requestProcessorInvokerList,
+                                       makeRequestProcessorInvokerList(
+                                               match.route.getRequestProcessor(request, response), request, response));
+                }
+            }, match);
         }
 
         for (const auto& processor : noMatchRoute_.getRequestProcessor(request, response))
@@ -180,21 +125,13 @@ private:
     std::vector<std::function<std::optional<bool>()>> makeRequestProcessorInvokerList(
             const std::vector<std::function<void(const TRequest&, TResponse&)>>& processorList,
             const TRequest& request,
-            TResponse& response,
-            std::optional<bool> checkAuthorizationState = {})
+            TResponse& response)
     {
         auto result = std::vector<std::function<std::optional<bool>()>>{};
         for (const auto& processor : processorList) {
             auto checkIfFinished = (&processor == &processorList.back());
-            result.emplace_back([request, response, processor, checkIfFinished, checkAuthorizationState, this]() mutable -> std::optional<bool>{
-                if (!checkAuthorizationState)
-                    processor(request, response);
-                else {
-                    if (isAccessAuthorized(request) == *checkAuthorizationState)
-                        processor(request, response);
-                    else
-                        return std::nullopt;
-                }
+            result.emplace_back([request, response, processor, checkIfFinished, this]() mutable -> std::optional<bool>{
+                processor(request, response);
                 if (checkIfFinished)
                     return !isRouteProcessingFinished(request, response);
                 else
@@ -204,62 +141,26 @@ private:
         return result;
     };
 
-    TRoute& stringRouteImpl(const std::string& path,
-                            detail::RouteRequestType<TRequestType> requestType,
-                            RouteAccess access = RouteAccess::Open)
+    TRoute& stringRouteImpl(
+            const std::string& path,
+            std::vector<detail::RouteSpecification<TRequest, TResponse>> routeSpecifications = {})
     {
-        if (routeMatchList_.empty() || routeMatchList_.back().isRegExp())
-            routeMatchList_.emplace_back(*this);
-
-        auto& match = routeMatchList_.back().path;
         auto routePath = path;
         if (trailingSlashMode_ == TrailingSlashMode::Optional &&
                 !routePath.empty() && routePath != "/" && routePath.back() == '/')
             routePath.pop_back();
 
-        switch (access) {
-            case RouteAccess::Authorized: {
-                auto& route = match.authorizedRouteMap.emplace(routePath, TRoute{*this}).first->second;
-                route.setRequestType(requestType);
-                return route;
-            }
-            case RouteAccess::Forbidden: {
-                auto& route = match.forbiddenRouteMap.emplace(routePath, TRoute{*this}).first->second;
-                route.setRequestType(requestType);
-                return route;
-            }
-            default: {
-                auto& route = match.openRouteMap.emplace(routePath, TRoute{*this}).first->second;
-                route.setRequestType(requestType);
-                return route;
-            }
-        }
+        auto& routeMatch = routeMatchList_.emplace_back(PathRouteMatch{routePath, TRoute{*this, routeSpecifications}});
+        return std::get<PathRouteMatch>(routeMatch).route;
     }
 
-    TRoute& regexRouteImpl(const std::regex& regExp,
-                            detail::RouteRequestType<TRequestType> requestType,
-                            RouteAccess access = RouteAccess::Open)
+    TRoute& regexRouteImpl(
+            const std::regex& regExp,
+            std::vector<detail::RouteSpecification<TRequest, TResponse>> routeSpecifications = {})
     {
-        routeMatchList_.emplace_back(*this);
-        auto& match = routeMatchList_.back().regExp;
-        match.setRegexp(regExp);
-        auto matchRoute = [](auto& route, auto type) -> TRoute&{
-            route.setRequestType(type);
-            return route;
-        };
-        switch (access){
-            case RouteAccess::Authorized:
-                return matchRoute(match.authorizedRoute, requestType);
-            case RouteAccess::Forbidden:
-                return matchRoute(match.forbiddenRoute, requestType);
-            default:
-                return matchRoute(match.openRoute, requestType);
-        }
-    }
-
-    virtual bool isAccessAuthorized(const TRequest&) const
-    {
-        return true;
+        auto& routeMatch = routeMatchList_.emplace_back(
+                RegExpRouteMatch{regExp, {*this, std::move(routeSpecifications)}});
+        return std::get<RegExpRouteMatch>(routeMatch).route;
     }
 
     virtual bool isRouteProcessingFinished(const TRequest&, TResponse&) const

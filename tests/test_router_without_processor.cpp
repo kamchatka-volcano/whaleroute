@@ -2,10 +2,20 @@
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
+namespace whaleroute {
+template<typename TRequest, typename TResponse>
+struct RouteSpecificationPredicate<RequestType, TRequest, TResponse> {
+    bool operator()(RequestType value, const TRequest& request, TResponse&) const
+    {
+        return value == request.type;
+    }
+};
+}
+
 namespace without_processor {
 
 class RouterWithoutProcessor : public ::testing::Test,
-                               public whaleroute::RequestRouter<Request, Response, RequestType, whaleroute::_, std::string> {
+                               public whaleroute::RequestRouter<Request, Response, whaleroute::_, std::string> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
@@ -24,11 +34,6 @@ protected:
     std::string getRequestPath(const Request& request) final
     {
         return request.requestPath;
-    }
-
-    RequestType getRequestType(const Request& request) final
-    {
-        return request.type;
     }
 
     void processUnmatchedRequest(const Request&, Response& response) final
@@ -58,7 +63,7 @@ TEST_F(RouterWithoutProcessor, MultipleRoutes)
 {
     route("/", RequestType::GET).set("Hello world");
     route("/page0", RequestType::GET).set("Default page");
-    route("/any", whaleroute::_{}).process([](const Request&, Response& response){ response.state->data = "Any!";});
+    route("/any").process([](const Request&, Response& response){ response.state->data = "Any!";});
     route(std::regex{R"(/page\d*)"}, RequestType::GET).set("Some page");
     route("/upload", RequestType::POST).set("OK");
     route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
