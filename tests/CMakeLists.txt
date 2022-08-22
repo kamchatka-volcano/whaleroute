@@ -14,7 +14,6 @@ set(SRC
     test_router.cpp
     test_router_without_processor.cpp
     test_router_without_response_value.cpp
-    test_access.cpp
     test_router_without_processor_and_response_value.cpp
     test_router_without_processor_and_request_type_and_response_value.cpp
     test_router_without_processor_and_request_type.cpp

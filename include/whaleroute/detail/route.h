@@ -1,6 +1,6 @@
 #pragma once
 #include "irequestrouter.h"
-#include "routespecification.h"
+#include "routespecifier.h"
 #include <whaleroute/types.h>
 #include <functional>
 #include <vector>
@@ -21,9 +21,9 @@ class Route{
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue>& router,
-          std::vector<RouteSpecification < TRequest, TResponse>> routeSpecifications)
+          std::vector<RouteSpecifier< TRequest, TResponse>> routeSpecifiers)
         : router_{router}
-        , routeSpecifications_{std::move(routeSpecifications)}
+        , routeSpecifiers_{std::move(routeSpecifiers)}
     {
     }
 
@@ -72,9 +72,9 @@ public:
 private:
     std::vector<Processor> getRequestProcessor(const TRequest& request, TResponse& response)
     {
-        if (!std::all_of(routeSpecifications_.begin(), routeSpecifications_.end(),
-                 [&request, &response](auto& routeSpecification) {
-                     return routeSpecification(request, response);
+        if (!std::all_of(routeSpecifiers_.begin(), routeSpecifiers_.end(),
+                 [&request, &response](auto& routeSpecifier) -> bool {
+                     return routeSpecifier(request, response);
                  }))
             return {};
 
@@ -85,7 +85,7 @@ private:
     std::vector<Processor> processorList_;
     std::unique_ptr<TRequestProcessor> requestProcessor_;
     IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue>& router_;
-    std::vector<RouteSpecification < TRequest, TResponse>> routeSpecifications_;
+    std::vector<RouteSpecifier < TRequest, TResponse>> routeSpecifiers_;
 };
 
 }

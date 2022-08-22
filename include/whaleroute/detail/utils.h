@@ -1,4 +1,5 @@
 #pragma once
+#include <whaleroute/types.h>
 #include <algorithm>
 
 namespace whaleroute::detail {

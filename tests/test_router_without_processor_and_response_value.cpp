@@ -2,9 +2,9 @@
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
-namespace whaleroute {
+namespace whaleroute::traits {
 template<typename TRequest, typename TResponse>
-struct RouteSpecificationPredicate<RequestType, TRequest, TResponse> {
+struct RouteSpecification<RequestType, TRequest, TResponse> {
     bool operator()(RequestType value, const TRequest& request, TResponse&) const
     {
         return value == request.type;

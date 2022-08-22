@@ -1,5 +1,5 @@
 #pragma once
-#include "emptytype.h"
+#include <whaleroute/types.h>
 
 namespace whaleroute::detail{
 

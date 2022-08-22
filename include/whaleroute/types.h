@@ -1,6 +1,19 @@
 #pragma once
-#include "detail/emptytype.h"
 
 namespace whaleroute{
-using _ = detail::_;
+
+struct _{};
+
+inline bool operator == (const _&, const _&)
+{
+    return true;
 }
+
+enum class TrailingSlashMode{
+    Optional,
+    Strict
+};
+
+}
+
+
