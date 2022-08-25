@@ -1,13 +1,17 @@
 #pragma once
 #include <whaleroute/routespecification.h>
 #include <functional>
+#include <type_traits>
+#include <vector>
 
 namespace whaleroute::detail{
 
 template<typename TRequest, typename TResponse>
 class RouteSpecifier{
 public:
-    template<typename TArg>
+    template<typename TArg, std::enable_if_t<
+            !std::is_base_of_v<RouteSpecifier<TRequest, TResponse>, std::remove_reference_t<TArg>> &&
+            !std::is_same_v<TArg, std::vector<RouteSpecifier<TRequest, TResponse>>>>* = nullptr>
     RouteSpecifier(TArg&& arg)
     {
         predicate_ = [arg = std::forward<TArg>(arg)](const TRequest& request, TResponse& response){
