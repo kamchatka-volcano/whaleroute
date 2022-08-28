@@ -1,6 +1,7 @@
 #include "common.h"
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
+#include <algorithm>
 
 namespace whaleroute::traits {
 template<typename TRequest, typename TResponse>
@@ -12,10 +13,35 @@ struct RouteSpecification<RequestType, TRequest, TResponse> {
 };
 }
 
+class TestString{
+public:
+    enum class CaseMode{Original, UpperCase};
+    TestString(std::string value, CaseMode caseMode = CaseMode::Original)
+    : value_{std::move(value)}
+    {
+        if (caseMode == CaseMode::UpperCase)
+            std::transform(value_.cbegin(), value_.cend(), value_.begin(), [](unsigned char ch){
+                return static_cast<char>(std::toupper(ch));
+            });
+    }
+    TestString(const char* value, CaseMode caseMode = CaseMode::Original)
+    : TestString{std::string{value}, caseMode}
+    {
+
+    }
+    std::string value() const
+    {
+        return value_;
+    }
+
+private:
+    std::string value_;
+};
+
 namespace without_processor {
 
 class RouterWithoutProcessor : public ::testing::Test,
-                               public whaleroute::RequestRouter<Request, Response, whaleroute::_, std::string> {
+                               public whaleroute::RequestRouter<Request, Response, whaleroute::_, TestString> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
@@ -41,9 +67,9 @@ protected:
         response.state->data = "NO_MATCH";
     }
 
-    void setResponseValue(Response& response, const std::string& value) final
+    void setResponseValue(Response& response, const TestString& value) final
     {
-        response.state->data = value;
+        response.state->data = value.value();
     }
 
 protected:
@@ -53,10 +79,10 @@ protected:
 TEST_F(RouterWithoutProcessor, NoMatchRouteText)
 {
     route("/", RequestType::GET).set("Hello world");
-    route().set("Not found");
+    route().set("Not found", TestString::CaseMode::UpperCase);
     processRequest(RequestType::GET, "/foo");
 
-    checkResponse("Not found");
+    checkResponse("NOT FOUND");
 }
 
 TEST_F(RouterWithoutProcessor, MultipleRoutes)
