@@ -94,6 +94,10 @@ private:
         return true;
     }
 
+    virtual void setRouteParameters(const std::vector<std::string>&, const TRequest&, TResponse&)
+    {
+    }
+
     std::vector<std::function<bool()>> makeRouteRequestProcessorInvokerList(const TRequest& request, TResponse& response)
     {
         auto result = std::vector<std::function<bool()>>{};
@@ -101,17 +105,24 @@ private:
             std::visit([&](auto& match){
                 using T = std::decay_t<decltype(match)>;
                 if constexpr(std::is_same_v<T, RegExpRouteMatch>){
-                    if (std::regex_match(this->getRequestPath(request), match.regExp))
+                    auto matchList = std::smatch{};
+                    const auto requestPath = this->getRequestPath(request);
+                    if (std::regex_match(requestPath, matchList, match.regExp)) {
+                        auto routeParams = std::vector<std::string>{};
+                        for (auto i = 1u; i < matchList.size(); ++i)
+                            routeParams.push_back(matchList[i].str());
+
                         detail::concat(result,
                                        makeRequestProcessorInvokerList(
-                                               match.route.getRequestProcessor(request, response), request, response));
+                                               match.route.getRequestProcessor(request, response), request, response, routeParams));
+                    }
 
                 }
                 else if constexpr(std::is_same_v<T, PathRouteMatch>){
                     if (match.path == makePath(this->getRequestPath(request)))
                         detail::concat(result,
                                        makeRequestProcessorInvokerList(
-                                               match.route.getRequestProcessor(request, response), request, response));
+                                               match.route.getRequestProcessor(request, response), request, response, {}));
                 }
             }, match);
         }
@@ -121,12 +132,14 @@ private:
     std::vector<std::function<bool()>> makeRequestProcessorInvokerList(
             const std::vector<std::function<void(const TRequest&, TResponse&)>>& processorList,
             const TRequest& request,
-            TResponse& response)
+            TResponse& response,
+            const std::vector<std::string>& routeParams)
     {
         auto result = std::vector<std::function<bool()>>{};
         for (const auto& processor : processorList) {
             auto checkIfFinished = (&processor == &processorList.back());
-            result.emplace_back([request, response, processor, checkIfFinished, this]() mutable -> bool{
+            result.emplace_back([request, response, processor, checkIfFinished, routeParams, this]() mutable -> bool{
+                this->setRouteParameters(routeParams, request, response);
                 processor(request, response);
                 if (checkIfFinished)
                     return !isRouteProcessingFinished(request, response);

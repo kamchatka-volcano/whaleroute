@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <memory>
+#include <vector>
 
 struct TestState{
     bool activated = false;
@@ -25,6 +26,7 @@ struct Response{
         bool wasSent = false;
     };
     std::shared_ptr<State> state;
+    std::vector<std::string> routeParams;
 };
 struct ResponseValue{
     std::string data;

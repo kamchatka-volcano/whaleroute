@@ -41,6 +41,11 @@ protected:
         response.state->data = value;
     }
 
+    void setRouteParameters(const std::vector<std::string>& params, const Request&, Response& response) final
+    {
+        response.routeParams = params;
+    }
+
 protected:
     std::string responseData_;
 };
@@ -90,8 +95,14 @@ public:
             : state_(state)
     {}
 
+    const std::vector<std::string>& routeParams() const
+    {
+        return routeParams_;
+    }
+
     void process(const Request& request, Response& response) override
     {
+        routeParams_ = response.routeParams;
         if (request.requestPath == "/config" && !request.name.empty())
             state_.name = request.name;
 
@@ -105,6 +116,7 @@ public:
     }
 
     NameState& state_;
+    std::vector<std::string> routeParams_;
 };
 
 class NameSetterRouteProcessor : public RequestProcessor {
@@ -126,6 +138,8 @@ TEST_F(RouterWithoutRequestType, StatefulRouteProcessor)
 {
     NameState state;
     auto processor = StatefulRouteProcessor{state};
+    route(std::regex{R"(/testparams/(.*))"}).process(processor);
+    route(std::regex{R"(/testparams2/(.+)-(.+))"}).process(processor);
     route(std::regex{R"(.*)"}).process(processor);
 
     processRequest("/");
@@ -136,6 +150,15 @@ TEST_F(RouterWithoutRequestType, StatefulRouteProcessor)
 
     processRequest("/");
     checkResponse("Hello foo");
+
+    processRequest("/testparams/123");
+    EXPECT_EQ(processor.routeParams(), std::vector<std::string>{"123"});
+
+    processRequest("/");
+    EXPECT_EQ(processor.routeParams(), std::vector<std::string>{});
+
+    processRequest("/testparams2/hello-world");
+    EXPECT_EQ(processor.routeParams(), (std::vector<std::string>{"hello", "world"}));
 }
 
 TEST_F(RouterWithoutRequestType, ChainedRouteProcessor)
