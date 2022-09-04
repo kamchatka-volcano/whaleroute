@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-namespace whaleroute::traits {
+namespace whaleroute::config {
 template<typename TRequest, typename TResponse>
 struct RouteSpecification<RequestType, TRequest, TResponse> {
     bool operator()(RequestType value, const TRequest& request, TResponse&) const
@@ -12,6 +12,8 @@ struct RouteSpecification<RequestType, TRequest, TResponse> {
     }
 };
 }
+
+namespace response_value_arguments {
 
 class TestString{
 public:
@@ -38,10 +40,8 @@ private:
     std::string value_;
 };
 
-namespace without_processor {
-
-class RouterWithoutProcessor : public ::testing::Test,
-                               public whaleroute::RequestRouter<Request, Response, whaleroute::_, TestString> {
+class ResponseValueFromArgs : public ::testing::Test,
+                               public whaleroute::RequestRouter<Request, Response, TestString> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
@@ -76,52 +76,16 @@ protected:
     std::string responseData_;
 };
 
-TEST_F(RouterWithoutProcessor, NoMatchRouteText)
+TEST_F(ResponseValueFromArgs, Default)
 {
     route("/", RequestType::GET).set("Hello world");
     route().set("Not found", TestString::CaseMode::UpperCase);
-    processRequest(RequestType::GET, "/foo");
-
-    checkResponse("NOT FOUND");
-}
-
-TEST_F(RouterWithoutProcessor, MultipleRoutes)
-{
-    route("/", RequestType::GET).set("Hello world");
-    route("/page0", RequestType::GET).set("Default page");
-    route("/any").process([](const Request&, Response& response){ response.state->data = "Any!";});
-    route(std::regex{R"(/page(\d*))"}, RequestType::GET).set("Some page");
-    route("/upload", RequestType::POST).set("OK");
-    route(std::regex{R"(/files/.*\.xml)"}, RequestType::GET).process(
-            [](const Request&, Response& response) {
-                auto fileContent = std::string{"testXML"};
-                response.state->data = fileContent;
-            });
-    route().set("404");
 
     processRequest(RequestType::GET, "/");
     checkResponse("Hello world");
 
-    processRequest(RequestType::POST, "/upload");
-    checkResponse("OK");
-
-    processRequest(RequestType::GET, "/page123");
-    checkResponse("Some page");
-
-    processRequest(RequestType::GET, "/page0");
-    checkResponse("Default page");
-
-    processRequest(RequestType::GET, "/files/test.xml");
-    checkResponse("testXML");
-
-    processRequest(RequestType::GET, "/files/test.xml1");
-    checkResponse("404");
-
-    processRequest(RequestType::POST, "/foo");
-    checkResponse("404");
-
-    processRequest(RequestType::POST, "/any");
-    checkResponse("Any!");
+    processRequest(RequestType::GET, "/foo");
+    checkResponse("NOT FOUND");
 }
 
 }

@@ -10,9 +10,9 @@
 
 namespace whaleroute{
 
-template <typename TRequest, typename TResponse, typename TRequestProcessor = _, typename TResponseValue = _>
-class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue> {
-    using TRoute = detail::Route<TRequest, TResponse, TRequestProcessor, TResponseValue>;
+template <typename TRequest, typename TResponse, typename TResponseValue = _>
+class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
+    using TRoute = detail::Route<TRequest, TResponse, TResponseValue>;
 
     struct RegExpRouteMatch{
         std::regex regExp;
@@ -28,8 +28,6 @@ public:
     RequestRouter()
        : noMatchRoute_{*this, {}}
     {
-        if constexpr(!std::is_same_v<TRequestProcessor, whaleroute::_>)
-            static_assert(std::has_virtual_destructor_v<TRequestProcessor>, "TRequestProcessor must have a virtual destructor");
     }
 
     void setTrailingSlashMode(TrailingSlashMode mode)
@@ -75,7 +73,7 @@ public:
         auto requestProcessorInvokerList = makeRouteRequestProcessorInvokerList(request, response);
         for (const auto& processor : noMatchRoute_.getRequestProcessor(request, response))
             requestProcessorInvokerList.emplace_back([request, response, processor]() mutable -> bool{
-                processor(request, response);
+                processor(request, response, {});
                 return false;
             });
 
@@ -92,10 +90,6 @@ private:
     virtual bool isRouteProcessingFinished(const TRequest&, TResponse&) const
     {
         return true;
-    }
-
-    virtual void setRouteParameters(const std::vector<std::string>&, const TRequest&, TResponse&)
-    {
     }
 
     std::vector<std::function<bool()>> makeRouteRequestProcessorInvokerList(const TRequest& request, TResponse& response)
@@ -130,7 +124,7 @@ private:
     }
 
     std::vector<std::function<bool()>> makeRequestProcessorInvokerList(
-            const std::vector<std::function<void(const TRequest&, TResponse&)>>& processorList,
+            const std::vector<std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&)>>& processorList,
             const TRequest& request,
             TResponse& response,
             const std::vector<std::string>& routeParams)
@@ -139,8 +133,7 @@ private:
         for (const auto& processor : processorList) {
             auto checkIfFinished = (&processor == &processorList.back());
             result.emplace_back([request, response, processor, checkIfFinished, routeParams, this]() mutable -> bool{
-                this->setRouteParameters(routeParams, request, response);
-                processor(request, response);
+                processor(request, response, routeParams);
                 if (checkIfFinished)
                     return !isRouteProcessingFinished(request, response);
                 else

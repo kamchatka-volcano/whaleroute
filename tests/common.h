@@ -1,7 +1,9 @@
 #pragma once
+#include <whaleroute/types.h>
 #include <string>
 #include <memory>
 #include <vector>
+#include <variant>
 
 struct TestState{
     bool activated = false;
@@ -21,6 +23,11 @@ struct Response{
     {
         state = std::make_shared<State>();
     }
+    void send(const std::string& data)
+    {
+        state->data = data;
+        state->wasSent = true;
+    }
     struct State {
         std::string data;
         bool wasSent = false;
@@ -32,8 +39,20 @@ struct ResponseValue{
     std::string data;
 };
 
-class RequestProcessor{
-public:
-    virtual ~RequestProcessor() = default;
-    virtual void process(const Request&, Response&){}
-};
+inline std::string getRouteParamErrorInfo(const whaleroute::RouteParameterError& error)
+{
+    if (std::holds_alternative<whaleroute::RouteParameterCountMismatch>(error)) {
+            const auto& errorInfo = std::get<whaleroute::RouteParameterCountMismatch>(error);
+            return "ROUTE_PARAM_ERROR: PARAM COUNT MISMATCH,"
+                          " EXPECTED:" + std::to_string(errorInfo.expectedNumber) +
+                          " ACTUAL:" + std::to_string(errorInfo.actualNumber);
+    }
+    else if (std::holds_alternative<whaleroute::RouteParameterReadError>(error))
+    {
+        const auto& errorInfo = std::get<whaleroute::RouteParameterReadError>(error);
+        return "ROUTE_PARAM_ERROR: COULDN'T READ ROUTE PARAM,"
+                      " INDEX:" + std::to_string(errorInfo.index) +
+                      " VALUE:" + errorInfo.value;
+    }
+    return {};
+}

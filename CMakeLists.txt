@@ -20,7 +20,6 @@ target_include_directories(
 
 option(ENABLE_TESTS "Enable tests" OFF)
 if (ENABLE_TESTS AND NOT WHALEROUTE_SUBPROJECT)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 

@@ -15,7 +15,7 @@ public:
     RouteSpecifier(TArg&& arg)
     {
         predicate_ = [arg = std::forward<TArg>(arg)](const TRequest& request, TResponse& response){
-            return traits::RouteSpecification<TArg, TRequest, TResponse>{}(arg, request, response);
+            return config::RouteSpecification<TArg, TRequest, TResponse>{}(arg, request, response);
         };
     }
 

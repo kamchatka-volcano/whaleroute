@@ -1,6 +1,8 @@
 #pragma once
 #include "irequestrouter.h"
+#include "irequestprocessor.h"
 #include "routespecifier.h"
+#include "functionrequestprocessor.h"
 #include <whaleroute/types.h>
 #include <functional>
 #include <vector>
@@ -8,55 +10,51 @@
 #include <memory>
 
 namespace whaleroute{
-template <typename TRequest, typename TResponse, typename TRequestProcessor, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TResponseValue>
 class RequestRouter;
 }
 
 namespace whaleroute::detail{
 
-template <typename TRequest, typename TResponse, typename TRequestProcessor, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TResponseValue>
 class Route{
-    friend class RequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue>;
-    using Processor = std::function<void(const TRequest&, TResponse&)>;
+    using IProcessor = IRequestProcessor<TRequest, TResponse>;
+    using ProcessorFunc = std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&)>;
+    friend class RequestRouter<TRequest, TResponse, TResponseValue>;
 
 public:
-    Route(IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue>& router,
+    Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
           std::vector<RouteSpecifier< TRequest, TResponse>> routeSpecifiers)
         : router_{router}
         , routeSpecifiers_{std::move(routeSpecifiers)}
     {
     }
 
-    template<typename TProcessor, typename T = TRequestProcessor, typename... TArgs>
-    auto process(TArgs&&... args) -> std::enable_if_t<!std::is_same_v<T, _>, Route&>
+    template<typename TProcessor, typename... TArgs>
+    auto process(TArgs&&... args) -> std::enable_if_t<std::is_base_of_v<IProcessor, TProcessor>, Route&>
     {
-        static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
-        requestProcessor_ = std::make_unique<TProcessor>(std::forward<TArgs>(args)...);
+        auto requestProcessor = requestProcessorList_.emplace_back(std::make_unique<TProcessor>(std::forward<TArgs>(args)...)).get();
         processorList_.emplace_back(
-                [this](const TRequest& request, TResponse& response) {
-                    router_.callRequestProcessor(*requestProcessor_, request, response);
+                [requestProcessor](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
+                    requestProcessor->processRouterRequest(request, response, routeParams);
                 });
         return *this;
     }
 
-    template<typename TProcessor, typename T = TRequestProcessor>
-    auto process(TProcessor& requestProcessor)-> std::enable_if_t<!std::is_same_v<T, _>, Route&>
+    template<typename TProcessor>
+    auto process(TProcessor& requestProcessor) -> std::enable_if_t<std::is_base_of_v<IProcessor, TProcessor>, Route&>
     {
-        static_assert(std::is_base_of<TRequestProcessor, TProcessor>::value, "TProcessor must inherit from RequestProcessor");
         processorList_.emplace_back(
-                [&requestProcessor, this](const TRequest& request, TResponse& response) {
-                    router_.callRequestProcessor(requestProcessor, request, response);
+                [&requestProcessor](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
+                    static_cast<IProcessor&>(requestProcessor).processRouterRequest(request, response, routeParams);
                 });
         return *this;
     }
 
-    Route& process(std::function<void(const TRequest&, TResponse&)> requestProcessor)
+    template<typename... TRouteParams>
+    Route& process(std::function<void(TRouteParams... params, const TRequest&, TResponse&)> requestProcessor)
     {
-        processorList_.emplace_back(
-                [requestProcessor](const TRequest& request, TResponse& response) {
-                    requestProcessor(request, response);
-                });
-        return *this;
+        return process<detail::FunctionRequestProcessor<TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
     }
 
     template<typename TCheckResponseValue = _,
@@ -64,7 +62,7 @@ public:
     void set(const TResponseValue& responseValue)
     {
         processorList_.emplace_back(
-                [responseValue, this](const TRequest&, TResponse& response) mutable {
+                [responseValue, this](const TRequest&, TResponse& response, const std::vector<std::string>&) mutable {
                     router_.setResponseValue(response, responseValue);
                 });
     }
@@ -76,13 +74,13 @@ public:
     {
         auto responseValue = TResponseValue{std::forward<TArgs>(args)...};
         processorList_.emplace_back(
-                [responseValue, this](const TRequest&, TResponse& response) mutable {
+                [responseValue, this](const TRequest&, TResponse& response, const std::vector<std::string>&) mutable {
                     router_.setResponseValue(response, responseValue);
                 });
     }
 
 private:
-    std::vector<Processor> getRequestProcessor(const TRequest& request, TResponse& response)
+    std::vector<ProcessorFunc> getRequestProcessor(const TRequest& request, TResponse& response)
     {
         if (!std::all_of(routeSpecifiers_.begin(), routeSpecifiers_.end(),
                  [&request, &response](auto& routeSpecifier) -> bool {
@@ -94,10 +92,10 @@ private:
     }
 
 private:
-    std::vector<Processor> processorList_;
-    std::unique_ptr<TRequestProcessor> requestProcessor_;
-    IRequestRouter<TRequest, TResponse, TRequestProcessor, TResponseValue>& router_;
-    std::vector<RouteSpecifier < TRequest, TResponse>> routeSpecifiers_;
+    std::vector<ProcessorFunc> processorList_;
+    std::vector<std::unique_ptr<IProcessor>> requestProcessorList_;
+    IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
+    std::vector<RouteSpecifier<TRequest, TResponse>> routeSpecifiers_;
 };
 
 }
