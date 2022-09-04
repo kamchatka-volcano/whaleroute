@@ -15,7 +15,7 @@ public:
     virtual void process(const TRouteParam&..., const TRequest&, TResponse&) = 0;
     virtual void onRouteParametersError(const TRequest&, TResponse&, const RouteParameterError&){};
 
-private:
+protected:
     void processRouterRequest(const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) override
     {
         auto param = std::tuple<TRouteParam...>{};
