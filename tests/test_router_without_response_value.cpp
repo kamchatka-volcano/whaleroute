@@ -113,14 +113,14 @@ TEST_F(RouterWithoutResponseValue, Matching)
     route("/", RequestType::GET).process<GreeterPageProcessor>();
     route("/moon", RequestType::GET).process<GreeterPageProcessor>("Moon");
     route("/page0", RequestType::GET).process([](auto&, auto& response){ response.send("Default page");});
-    route(std::regex{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.send("Some page");});
+    route(whaleroute::rx{R"(/page\d*)"}, RequestType::GET).process([](auto&, auto& response){ response.send("Some page");});
     route("/upload", RequestType::POST).process([](auto&, auto& response){ response.send("OK");});
-    route(std::regex{R"(/chapter/(.+)/page(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(std::regex{R"(/chapter_(.+)/page_(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
+    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(std::regex{R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
+    route(whaleroute::rx{R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(std::regex{R"(/files/(.*\.xml))"}, RequestType::GET).process<std::string>(
+    route(whaleroute::rx{R"(/files/(.*\.xml))"}, RequestType::GET).process<std::string>(
             [](const std::string& fileName, const Request&, Response& response) {
                 auto fileContent = std::string{"XML file: " + fileName};
                 response.send(fileContent);
@@ -181,7 +181,7 @@ TEST_F(RouterWithoutResponseValue, DefaultUnmatchedRequestHandler)
 
 TEST_F(RouterWithoutResponseValue, MultipleRoutesMatching)
 {
-    route(std::regex{"/greet/.*"}, RequestType::GET).process([](const auto&, auto& response) {
+    route(whaleroute::rx{"/greet/.*"}, RequestType::GET).process([](const auto&, auto& response) {
         response.state->data = "Hello";
     });
     route("/greet/world", RequestType::GET).process([](const auto& request, auto& response) {
@@ -189,7 +189,7 @@ TEST_F(RouterWithoutResponseValue, MultipleRoutesMatching)
         response.state->wasSent = true;
     });
     auto testState = std::string{};
-    route(std::regex{"/thank/.*"}, RequestType::GET).process([](const auto&, auto& response) {
+    route(whaleroute::rx{"/thank/.*"}, RequestType::GET).process([](const auto&, auto& response) {
                                                          response.state->data = "Thanks";});
     route("/thank/world", RequestType::GET).process([](const auto&, auto& response) { //Chained processors
                                                 response.state->data += " world";
@@ -281,8 +281,8 @@ private:
 TEST_F(RouterWithoutResponseValue, SameParametrizedProcessorObjectUsedInMultipleRoutes){
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
-    route(std::regex{"/test/(.+)"}, RequestType::GET).process(counterProcessor);
-    route(std::regex{"/test2/(.+)"}, RequestType::GET).process(counterProcessor);
+    route(whaleroute::rx{"/test/(.+)"}, RequestType::GET).process(counterProcessor);
+    route(whaleroute::rx{"/test2/(.+)"}, RequestType::GET).process(counterProcessor);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");
@@ -293,8 +293,8 @@ TEST_F(RouterWithoutResponseValue, SameParametrizedProcessorObjectUsedInMultiple
 
 TEST_F(RouterWithoutResponseValue, SameParametrizedProcessorTypeCreatedInMultipleRoutes){
     int state = 0;
-    route(std::regex{"/test/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
-    route(std::regex{"/test2/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
+    route(whaleroute::rx{"/test/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
+    route(whaleroute::rx{"/test2/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");

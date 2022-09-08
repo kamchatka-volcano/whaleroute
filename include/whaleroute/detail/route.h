@@ -57,19 +57,9 @@ public:
         return process<detail::FunctionRequestProcessor<TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
     }
 
-    template<typename TCheckResponseValue = _,
-            typename = std::enable_if_t<!std::is_same_v<TResponseValue, TCheckResponseValue>>>
-    void set(const TResponseValue& responseValue)
-    {
-        processorList_.emplace_back(
-                [responseValue, this](const TRequest&, TResponse& response, const std::vector<std::string>&) mutable {
-                    router_.setResponseValue(response, responseValue);
-                });
-    }
-
     template<typename... TArgs,
-            typename TCheckResponseValue = _,
-            typename = std::enable_if_t<!std::is_same_v<TResponseValue, TCheckResponseValue>>>
+            typename TCheckResponseValue = TResponseValue,
+            typename = std::enable_if_t<!std::is_same_v<TCheckResponseValue, _>>>
     void set(TArgs&&... args)
     {
         auto responseValue = TResponseValue{std::forward<TArgs>(args)...};

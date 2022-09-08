@@ -106,14 +106,14 @@ TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, Matching)
     route("/").process<GreeterPageProcessor>();
     route("/moon").process<GreeterPageProcessor>("Moon");
     route("/page0").process([](auto&, auto& response){ response.send("Default page");});
-    route(std::regex{R"(/page\d*)"}).process([](auto&, auto& response){ response.send("Some page");});
+    route(whaleroute::rx{R"(/page\d*)"}).process([](auto&, auto& response){ response.send("Some page");});
     route("/upload").process([](auto&, auto& response){ response.send("OK");});
-    route(std::regex{R"(/chapter/(.+)/page(\d+))"}).process<ChapterNamePageIndexProcessor>();
-    route(std::regex{R"(/chapter_(.+)/page_(\d+))"}).process<ChapterNamePageIndexProcessor>("TestBook");
+    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}).process<ChapterNamePageIndexProcessor>();
+    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(std::regex{R"(/chapter_(.+)/)"}).process(parametrizedProcessor);
+    route(whaleroute::rx{R"(/chapter_(.+)/)"}).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(std::regex{R"(/files/(.*\.xml))"}).process<std::string>(
+    route(whaleroute::rx{R"(/files/(.*\.xml))"}).process<std::string>(
             [](const std::string& fileName, const Request&, Response& response) {
                 auto fileContent = std::string{"XML file: " + fileName};
                 response.send(fileContent);
@@ -168,7 +168,7 @@ TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, DefaultUnmatchedRequestHand
 
 TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, MultipleRoutesMatching)
 {
-    route(std::regex{"/greet/.*"}).process([](const auto&, auto& response) {
+    route(whaleroute::rx{"/greet/.*"}).process([](const auto&, auto& response) {
         response.state->data = "Hello";
     });
     route("/greet/world").process([](const auto& request, auto& response) {
@@ -176,7 +176,7 @@ TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, MultipleRoutesMatching)
         response.state->wasSent = true;
     });
     auto testState = std::string{};
-    route(std::regex{"/thank/.*"}).process([](const auto&, auto& response) {
+    route(whaleroute::rx{"/thank/.*"}).process([](const auto&, auto& response) {
                                                          response.state->data = "Thanks";});
     route("/thank/world").process([](const auto&, auto& response) { //Chained processors
                                                 response.state->data += " world";
@@ -264,8 +264,8 @@ private:
 TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, SameParametrizedProcessorObjectUsedInMultipleRoutes){
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
-    route(std::regex{"/test/(.+)"}).process(counterProcessor);
-    route(std::regex{"/test2/(.+)"}).process(counterProcessor);
+    route(whaleroute::rx{"/test/(.+)"}).process(counterProcessor);
+    route(whaleroute::rx{"/test2/(.+)"}).process(counterProcessor);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");
@@ -276,8 +276,8 @@ TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, SameParametrizedProcessorOb
 
 TEST_F(RouterWithoutRouteSpecifiersAndResponseValue, SameParametrizedProcessorTypeCreatedInMultipleRoutes){
     int state = 0;
-    route(std::regex{"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
-    route(std::regex{"/test2/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
+    route(whaleroute::rx{"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
+    route(whaleroute::rx{"/test2/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");

@@ -35,6 +35,11 @@ public:
         trailingSlashMode_ = mode;
     }
 
+    void setRegexMode(RegexMode mode)
+    {
+        regexMode_ = mode;
+    }
+
     template<typename... TRouteSpecificationArgs>
     TRoute& route(const std::string& path, TRouteSpecificationArgs&&... spec)
     {
@@ -47,12 +52,12 @@ public:
     }
 
     template<typename... TRouteSpecificationArgs>
-    TRoute& route(const std::regex& regExp, TRouteSpecificationArgs&&... spec)
+    TRoute& route(const rx& regExp, TRouteSpecificationArgs&&... spec)
     {
         return regexRouteImpl(regExp, {std::forward<TRouteSpecificationArgs>(spec)...});
     }
 
-    TRoute& route(const std::regex& regExp)
+    TRoute& route(const rx& regExp)
     {
         return regexRouteImpl(regExp, {});
     }
@@ -100,7 +105,7 @@ private:
                 using T = std::decay_t<decltype(match)>;
                 if constexpr(std::is_same_v<T, RegExpRouteMatch>){
                     auto matchList = std::smatch{};
-                    const auto requestPath = this->getRequestPath(request);
+                    const auto requestPath = detail::makePath(this->getRequestPath(request), trailingSlashMode_);
                     if (std::regex_match(requestPath, matchList, match.regExp)) {
                         auto routeParams = std::vector<std::string>{};
                         for (auto i = 1u; i < matchList.size(); ++i)
@@ -113,7 +118,7 @@ private:
 
                 }
                 else if constexpr(std::is_same_v<T, PathRouteMatch>){
-                    if (match.path == makePath(this->getRequestPath(request)))
+                    if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
                         detail::concat(result,
                                        makeRequestProcessorInvokerList(
                                                match.route.getRequestProcessor(request, response), request, response, {}));
@@ -147,34 +152,25 @@ private:
             const std::string& path,
             std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
     {
-        auto routePath = makePath(path);
+        auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(PathRouteMatch{routePath, TRoute{*this, routeSpecifications}});
         return std::get<PathRouteMatch>(routeMatch).route;
     }
 
     TRoute& regexRouteImpl(
-            const std::regex& regExp,
+            const rx& regExp,
             std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(
-                RegExpRouteMatch{regExp, {*this, std::move(routeSpecifications)}});
+                RegExpRouteMatch{detail::makeRegex(regExp, regexMode_, trailingSlashMode_), {*this, std::move(routeSpecifications)}});
         return std::get<RegExpRouteMatch>(routeMatch).route;
-    }
-
-    std::string makePath(const std::string& path)
-    {
-        if (trailingSlashMode_ == TrailingSlashMode::Optional &&
-            path != "/" &&
-            !path.empty() &&
-            path.back() == '/')
-            return {path.begin(), path.end() - 1};
-        return path;
     }
 
 private:
     std::deque<RouteMatch> routeMatchList_;
     TRoute noMatchRoute_;
     TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
+    RegexMode regexMode_ = RegexMode::Regular;
 };
 
 }
