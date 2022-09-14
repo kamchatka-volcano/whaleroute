@@ -1,7 +1,7 @@
 #pragma once
 #include <whaleroute/types.h>
 #include <whaleroute/stringconverter.h>
-#include <sfun/string_utils.h>
+#include "external/sfun/string_utils.h"
 #include <algorithm>
 #include <string_view>
 #include <string>

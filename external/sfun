@@ -1,12 +1,16 @@
 include(FetchContent)
 Set(FETCHCONTENT_QUIET FALSE)
-if (NOT TARGET sfun)
+if (NOT TARGET whaleroute_sfun)
     FetchContent_Declare(
-            sfun
+            whaleroute_sfun
             GIT_REPOSITORY https://github.com/kamchatka-volcano/sfun.git
-            GIT_TAG        v2.3.0
+            GIT_TAG        include_guards
             GIT_SHALLOW    ON
             GIT_PROGRESS TRUE
     )
-    FetchContent_MakeAvailable(sfun)
+    FetchContent_GetProperties(whaleroute_sfun)
+    if(NOT whaleroute_sfun_POPULATED)
+        FetchContent_Populate(whaleroute_sfun)
+    endif()
+    file(COPY "${whaleroute_sfun_SOURCE_DIR}/include/sfun" DESTINATION "${PROJECT_SOURCE_DIR}/include/whaleroute/detail/external/")
 endif()

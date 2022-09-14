@@ -19,16 +19,6 @@ target_include_directories(
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_include_directories(
-    whaleroute
-    INTERFACE
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/whaleroute/detail/external>
-)
-target_include_directories(
-    whaleroute
-    INTERFACE
-    $<BUILD_INTERFACE:${sfun_SOURCE_DIR}/include/>
-)
 
 option(ENABLE_TESTS "Enable tests" OFF)
 if (ENABLE_TESTS AND NOT WHALEROUTE_SUBPROJECT)
@@ -39,7 +29,6 @@ option(INSTALL_WHALEROUTE "Install whaleroute library unconditionally" OFF)
 if (NOT WHALEROUTE_SUBPROJECT OR INSTALL_WHALEROUTE)
     include(GNUInstallDirs)
     install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/whaleroute DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-    install(DIRECTORY ${sfun_SOURCE_DIR}/include/sfun          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/whaleroute/detail/external)
 
     set(WHALEROUTE_PACK_PATH ${CMAKE_INSTALL_LIBDIR}/cmake/whaleroute)
 
