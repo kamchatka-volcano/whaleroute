@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_STRINGCONVERTER_H
+#define WHALEROUTE_STRINGCONVERTER_H
+
 #include <string>
 #include <sstream>
 #include <optional>
@@ -25,3 +27,5 @@ struct StringConverter{
 };
 
 }
+
+#endif //WHALEROUTE_STRINGCONVERTER_H

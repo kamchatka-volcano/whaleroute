@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_IREQUESTROUTER_H
+#define WHALEROUTE_IREQUESTROUTER_H
+
 #include <whaleroute/types.h>
 
 namespace whaleroute::detail{
@@ -28,3 +30,5 @@ public:
 };
 
 }
+
+#endif //WHALEROUTE_IREQUESTROUTER_H

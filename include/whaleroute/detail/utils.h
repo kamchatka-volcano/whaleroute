@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_UTILS_H
+#define WHALEROUTE_UTILS_H
+
 #include <whaleroute/types.h>
 #include <whaleroute/stringconverter.h>
 #include "external/sfun/string_utils.h"
@@ -80,3 +82,5 @@ inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlash
 
 
 }
+
+#endif //WHALEROUTE_UTILS_H

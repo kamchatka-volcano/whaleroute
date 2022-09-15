@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_FUNCTIONREQUESTPROCESSOR_H
+#define WHALEROUTE_FUNCTIONREQUESTPROCESSOR_H
+
 #include <whaleroute/requestprocessor.h>
 #include <functional>
 
@@ -22,3 +24,5 @@ private:
 };
 
 }
+
+#endif //WHALEROUTE_FUNCTIONREQUESTPROCESSOR_H

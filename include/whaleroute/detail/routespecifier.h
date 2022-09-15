@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_ROUTESPECIFIER_H
+#define WHALEROUTE_ROUTESPECIFIER_H
+
 #include <whaleroute/routespecification.h>
 #include <functional>
 #include <type_traits>
@@ -29,3 +31,5 @@ private:
 };
 
 }
+
+#endif //WHALEROUTE_ROUTESPECIFIER_H

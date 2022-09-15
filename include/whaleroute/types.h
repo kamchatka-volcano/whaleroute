@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_TYPES_H
+#define WHALEROUTE_TYPES_H
+
 #include <string>
 #include <variant>
 
@@ -43,5 +45,7 @@ namespace string_literals{
 }
 
 }
+
+#endif //WHALEROUTE_TYPES_H
 
 

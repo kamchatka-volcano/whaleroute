@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_ROUTE_H
+#define WHALEROUTE_ROUTE_H
+
 #include "irequestrouter.h"
 #include "irequestprocessor.h"
 #include "routespecifier.h"
@@ -89,4 +91,6 @@ private:
 };
 
 }
+
+#endif //WHALEROUTE_ROUTE_H
 

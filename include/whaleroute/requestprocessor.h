@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_REQUESTPROCESSOR_H
+#define WHALEROUTE_REQUESTPROCESSOR_H
+
 #include "detail/irequestprocessor.h"
 #include "detail/utils.h"
 #include <type_traits>
@@ -54,3 +56,5 @@ protected:
 };
 
 }
+
+#endif //WHALEROUTE_REQUESTPROCESSOR_H

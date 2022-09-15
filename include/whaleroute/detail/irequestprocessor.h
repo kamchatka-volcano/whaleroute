@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_IREQUESTPROCESSOR_H
+#define WHALEROUTE_IREQUESTPROCESSOR_H
+
 #include <vector>
 #include <string>
 
@@ -18,3 +20,5 @@ public:
 };
 
 }
+
+#endif //WHALEROUTE_IREQUESTPROCESSOR_H

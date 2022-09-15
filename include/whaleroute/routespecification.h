@@ -1,4 +1,5 @@
-#pragma once
+#ifndef WHALEROUTE_ROUTESPECIFICATION_H
+#define WHALEROUTE_ROUTESPECIFICATION_H
 
 namespace whaleroute::config{
 template<typename T, typename TRequest, typename TResponse>
@@ -7,3 +8,5 @@ struct RouteSpecification{
 };
 
 }
+
+#endif //WHALEROUTE_ROUTESPECIFICATION_H

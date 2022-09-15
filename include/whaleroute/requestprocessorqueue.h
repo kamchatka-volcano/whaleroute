@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_REQUESTPROCESSORQUEUE_H
+#define WHALEROUTE_REQUESTPROCESSORQUEUE_H
+
 #include <vector>
 #include <functional>
 #include <optional>
@@ -38,3 +40,5 @@ private:
 };
 
 }
+
+#endif //WHALEROUTE_REQUESTPROCESSORQUEUE_H

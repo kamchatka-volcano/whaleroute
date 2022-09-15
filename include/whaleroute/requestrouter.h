@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_REQUESTROUTER_H
+#define WHALEROUTE_REQUESTROUTER_H
+
 #include "types.h"
 #include "requestprocessorqueue.h"
 #include "detail/irequestrouter.h"
@@ -174,3 +176,5 @@ private:
 };
 
 }
+
+#endif //WHALEROUTE_REQUESTROUTER_H
