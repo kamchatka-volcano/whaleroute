@@ -11,6 +11,7 @@ SealLake_Download(
         DESTINATION include/whaleroute/detail/external
         TEXT_REPLACEMENTS
             "namespace sfun" "namespace whaleroute::sfun"
+            "SFUN_" "WHALEROUTE_SFUN_"
 )
 
 SealLake_HeaderOnlyLibrary(
