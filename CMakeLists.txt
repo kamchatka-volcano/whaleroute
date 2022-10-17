@@ -3,7 +3,8 @@ project(whaleroute VERSION 2.0.0 DESCRIPTION "C++17 request routing library")
 include(GNUInstallDirs)
 include(external/seal_lake)
 
-SealLake_Download(
+SealLake_Bundle(
+        NAME whaleroute_sfun
         GIT_REPOSITORY https://github.com/kamchatka-volcano/sfun.git
         GIT_TAG        cmake_maintenance
         DIRECTORIES
