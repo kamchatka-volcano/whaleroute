@@ -59,6 +59,11 @@ public:
         return process<detail::FunctionRequestProcessor<TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
     }
 
+    Route& process(std::function<void(const TRequest&, TResponse&)> requestProcessor)
+    {
+        return process<detail::FunctionRequestProcessor<TRequest, TResponse>>(std::move(requestProcessor));
+    }
+
     template<typename... TArgs,
             typename TCheckResponseValue = TResponseValue,
             typename = std::enable_if_t<!std::is_same_v<TCheckResponseValue, _>>>
