@@ -33,7 +33,8 @@ public:
     }
 
     template<typename TProcessor, typename... TArgs>
-    auto process(TArgs&&... args) -> std::enable_if_t<std::is_base_of_v<IProcessor, TProcessor>, Route&>
+    auto process(TArgs&&... args) -> std::enable_if_t<std::is_base_of_v<IProcessor, TProcessor> &&
+                                                      std::is_constructible_v<TProcessor, TArgs...>, Route&>
     {
         auto requestProcessor = requestProcessorList_.emplace_back(std::make_unique<TProcessor>(std::forward<TArgs>(args)...)).get();
         processorList_.emplace_back(
@@ -53,16 +54,22 @@ public:
         return *this;
     }
 
-    template<typename... TRouteParams>
-    Route& process(std::function<void(TRouteParams... params, const TRequest&, TResponse&)> requestProcessor)
+    template<typename... TRouteParams, typename TFunc>
+    auto process(TFunc requestProcessor) -> std::enable_if_t<std::is_invocable_v<TFunc, TRouteParams..., const TRequest&, TResponse&>, Route&>
     {
-        return process<detail::FunctionRequestProcessor<TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
+        return process<detail::FunctionRequestProcessor2<TFunc, TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
     }
 
-    Route& process(std::function<void(const TRequest&, TResponse&)> requestProcessor)
-    {
-        return process<detail::FunctionRequestProcessor<TRequest, TResponse>>(std::move(requestProcessor));
-    }
+//    template<typename... TRouteParams>
+//    Route& process(std::function<void(TRouteParams... params, const TRequest&, TResponse&)> requestProcessor)
+//    {
+//        return process<detail::FunctionRequestProcessor<TRequest, TResponse, TRouteParams...>>(std::move(requestProcessor));
+//    }
+//
+//    Route& process(std::function<void(const TRequest&, TResponse&)> requestProcessor)
+//    {
+//        return process<detail::FunctionRequestProcessor<TRequest, TResponse>>(std::move(requestProcessor));
+//    }
 
     template<typename... TArgs,
             typename TCheckResponseValue = TResponseValue,
