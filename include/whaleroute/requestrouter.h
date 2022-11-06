@@ -140,7 +140,7 @@ private:
         for (const auto& processor : processorList) {
             auto checkIfFinished = (&processor == &processorList.back());
             result.emplace_back([request, response, processor, checkIfFinished, routeParams, this]() mutable -> bool{
-                processor(request, response, routeParams);
+               processor(request, response, routeParams);
                 if (checkIfFinished)
                     return !isRouteProcessingFinished(request, response);
                 else
