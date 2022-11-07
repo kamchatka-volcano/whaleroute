@@ -27,9 +27,11 @@ class Route{
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
-          std::vector<RouteSpecifier< TRequest, TResponse>> routeSpecifiers)
+          std::vector<RouteSpecifier< TRequest, TResponse>> routeSpecifiers,
+          std::function<void (const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
         : router_{router}
         , routeSpecifiers_{std::move(routeSpecifiers)}
+        , routeParameterErrorHandler_{std::move(routeParameterErrorHandler)}
     {
     }
 
@@ -39,8 +41,8 @@ public:
         //auto requestProcessor = requestProcessorList_.emplace_back(std::make_unique<TProcessor>(std::forward<TArgs>(args)...)).get();
         auto requestProcessor = std::make_shared<TProcessor>(std::forward<TArgs>(args)...);
         processorList_.emplace_back(
-                [requestProcessor](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
-                    invokeRequestProcessor<TProcessor, TRequest, TResponse>(*requestProcessor, request, response, routeParams);
+                [requestProcessor, this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
+                    invokeRequestProcessor<TProcessor, TRequest, TResponse>(*requestProcessor, request, response, routeParams, routeParameterErrorHandler_);
                 });
         return *this;
     }
@@ -49,8 +51,8 @@ public:
     Route& process(TProcessor&& requestProcessor) //-> std::enable_if_t<std::is_base_of_v<IProcessor, TProcessor>, Route&>
     {
         processorList_.emplace_back(
-                [&requestProcessor](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
-                    invokeRequestProcessor(requestProcessor, request, response, routeParams);
+                [&requestProcessor, this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
+                    invokeRequestProcessor(requestProcessor, request, response, routeParams, routeParameterErrorHandler_);
                 });
         return *this;
     }
@@ -90,6 +92,7 @@ private:
 //    std::vector<std::unique_ptr<IProcessor>> requestProcessorList_;
     IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
     std::vector<RouteSpecifier<TRequest, TResponse>> routeSpecifiers_;
+    std::function<void (const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };
 
 }

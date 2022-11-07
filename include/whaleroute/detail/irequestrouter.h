@@ -27,6 +27,7 @@ public:
     virtual ~IRequestRouter() = default;
     virtual std::string getRequestPath(const TRequest&) = 0;
     virtual void processUnmatchedRequest(const TRequest&, TResponse&) = 0;
+    virtual void onRouteParametersError(const TRequest&, TResponse&, const RouteParameterError&){};
 };
 
 }

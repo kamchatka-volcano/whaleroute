@@ -141,7 +141,12 @@ template<typename TArgsTuple>
 using requestProcessorRouteParamsType = typename decltype(makeDecaySubtuple<TArgsTuple>(std::make_index_sequence<std::tuple_size_v<TArgsTuple> - 2>()))::type;
 
 template<typename TRequestProcessor, typename TRequest, typename TResponse>
-void invokeRequestProcessor(TRequestProcessor& requestProcessor, const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams)
+void invokeRequestProcessor(
+        TRequestProcessor& requestProcessor,
+        const TRequest& request,
+        TResponse& response,
+        const std::vector<std::string>& routeParams,
+        std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParamErrorHandler)
 {
     checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse>();
 
@@ -153,8 +158,11 @@ void invokeRequestProcessor(TRequestProcessor& requestProcessor, const TRequest&
         return;
     }
     else {
-        if (routeParams.size() < paramsSize)
-            throw std::runtime_error{"Route parameter count mismatch"};
+        if (routeParams.size() < paramsSize) {
+            routeParamErrorHandler(request, response, RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())});
+            return;
+        }
+
         using params_t = requestProcessorRouteParamsType<args_t>;
         auto params = params_t{};
         auto i = 0u;
@@ -162,27 +170,24 @@ void invokeRequestProcessor(TRequestProcessor& requestProcessor, const TRequest&
         auto readParam = [&](auto& val) {
             if (error)
                 return;
-            //        if (i >= routeParams.size()){
-            //            error = RouteParameterCountMismatch{std::tuple_size_v<decltype(param)>, static_cast<int>(routeParams.size())};
-            //            return;
-            //        }
+
             const auto& param = routeParams.at(i++);
             auto paramValue = detail::convertFromString<std::decay_t<decltype(val)>>(param);
             if (paramValue)
                 val = *paramValue;
             else
-                throw std::runtime_error{"Route parameter read error"};
-            //error = RouteParameterReadError{static_cast<int>(i), param};
+                error = RouteParameterReadError{static_cast<int>(i), param};
+
         };
 
         std::apply([readParam](auto& ... paramValues) {
             ((readParam(paramValues)), ...);
         }, params);
 
-        //    if (error) {
-        //        onRouteParametersError(request, response, *error);
-        //        return;
-        //    }
+        if (error) {
+            routeParamErrorHandler(request, response, *error);
+            return;
+        }
 
         auto callProcess = [&](const auto& ... param) {
             requestProcessor(param..., request, response);

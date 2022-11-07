@@ -28,7 +28,7 @@ class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TRespon
 
 public:
     RequestRouter()
-       : noMatchRoute_{*this, {}}
+       : noMatchRoute_{*this, {}, routeParametersErrorHandler()}
     {
     }
 
@@ -99,6 +99,13 @@ private:
         return true;
     }
 
+    std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParametersErrorHandler()
+    {
+        return [this](const TRequest& request, TResponse& response, const RouteParameterError& error) {
+            this->onRouteParametersError(request, response, error);
+        };
+    }
+
     std::vector<std::function<bool()>> makeRouteRequestProcessorInvokerList(const TRequest& request, TResponse& response)
     {
         auto result = std::vector<std::function<bool()>>{};
@@ -155,7 +162,7 @@ private:
             std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
-        auto& routeMatch = routeMatchList_.emplace_back(PathRouteMatch{routePath, TRoute{*this, routeSpecifications}});
+        auto& routeMatch = routeMatchList_.emplace_back(PathRouteMatch{routePath, TRoute{*this, routeSpecifications, routeParametersErrorHandler()}});
         return std::get<PathRouteMatch>(routeMatch).route;
     }
 
@@ -164,7 +171,7 @@ private:
             std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(
-                RegExpRouteMatch{detail::makeRegex(regExp, regexMode_, trailingSlashMode_), {*this, std::move(routeSpecifications)}});
+                RegExpRouteMatch{detail::makeRegex(regExp, regexMode_, trailingSlashMode_), {*this, std::move(routeSpecifications), routeParametersErrorHandler()}});
         return std::get<RegExpRouteMatch>(routeMatch).route;
     }
 

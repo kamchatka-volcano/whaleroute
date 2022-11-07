@@ -44,6 +44,11 @@ public:
         EXPECT_EQ(responseData_, expectedResponseData);
     }
 
+    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error) override
+    {
+       response.send(getRouteParamErrorInfo(error));
+    }
+
 protected:
     std::string getRequestPath(const Request& request) final
     {
@@ -111,10 +116,6 @@ public:
     {
         response.send("Chapter: " + chapterName.value);
     }
-//    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error) override
-//    {
-//        response.send(getRouteParamErrorInfo(error));
-//    }
 };
 
 using namespace whaleroute::string_literals;
