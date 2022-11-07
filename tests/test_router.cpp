@@ -101,10 +101,7 @@ public:
     {
         response.send(title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" + std::to_string(pageIndex) + "]");
     }
-//    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error) override
-//    {
-//        response.send(getRouteParamErrorInfo(error));
-//    }
+
 private:
     std::string title_;
 };
