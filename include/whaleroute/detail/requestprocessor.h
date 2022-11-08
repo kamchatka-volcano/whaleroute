@@ -74,7 +74,10 @@ void invokeRequestProcessor(
     else {
         auto paramsResult = readRouteParams<argsTypeList>(routeParams);
         std::visit(overloaded{
-                [&](const RouteParameterError& error) { routeParamErrorHandler(request, response, error); },
+                [&](const RouteParameterError& error) {
+                    if (routeParamErrorHandler)
+                        routeParamErrorHandler(request, response, error);
+                },
                 [&](const auto& params) {
                     auto callProcess = [&](const auto& ... param) {
                         requestProcessor(param..., request, response);

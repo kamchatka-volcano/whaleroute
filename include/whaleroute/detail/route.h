@@ -60,10 +60,20 @@ public:
     }
 
     template<typename TProcessor>
-    Route& process(TProcessor&& requestProcessor)
+    Route& process(TProcessor& requestProcessor)
     {
         processorList_.emplace_back(
                 [&requestProcessor, this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
+                    invokeRequestProcessor(requestProcessor, request, response, routeParams, routeParameterErrorHandler_);
+                });
+        return *this;
+    }
+
+    template<typename TProcessor>
+    Route& process(TProcessor&& requestProcessor)
+    {
+        processorList_.emplace_back(
+                [requestProcessor = std::forward<TProcessor>(requestProcessor), this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams) {
                     invokeRequestProcessor(requestProcessor, request, response, routeParams, routeParameterErrorHandler_);
                 });
         return *this;

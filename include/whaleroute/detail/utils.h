@@ -28,7 +28,7 @@ std::optional<T> convertFromString(const std::string& data)
         return config::StringConverter<T>::fromString(data);
     }
     catch(...){
-        return {};
+        return std::nullopt;
     }
 }
 
