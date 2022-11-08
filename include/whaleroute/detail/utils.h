@@ -95,6 +95,9 @@ using type_list = std::tuple<type_wrapper<T>...>;
 template<std::size_t index, typename TList>
 using type_list_element = unwrap_type<std::remove_reference_t<decltype(std::get<index>(TList{}))>>;
 
+template<typename TList>
+constexpr auto type_list_size = std::tuple_size_v<TList>;
+
 template<std::size_t index, typename TList>
 constexpr auto typeListElement(){
     auto list = TList{};
@@ -102,6 +105,9 @@ constexpr auto typeListElement(){
 }
 template<typename TList, std::size_t... I>
 constexpr auto makeTypeListElementsTuple(std::index_sequence<I...>) -> std::tuple<type_list_element<I, TList>...>;
+
+template<typename TList, std::size_t Size = std::tuple_size_v<TList>>
+using type_list_elements_tuple = decltype(makeTypeListElementsTuple<TList>(std::make_index_sequence<Size>()));
 
 template <typename... T>
 constexpr auto makeDecayTuple (std::tuple<T...> const &)

@@ -16,9 +16,8 @@ constexpr void checkRequestProcessorSignature()
     static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
 }
 
-template<typename TArgsTuple>
-using requestProcessorArgsRouteParams = decay_tuple<decltype(makeTypeListElementsTuple<TArgsTuple>(
-        std::make_index_sequence<std::tuple_size_v<TArgsTuple> - 2>()))>;
+template<typename TArgsTypeList>
+using requestProcessorArgsRouteParams = decay_tuple<type_list_elements_tuple<TArgsTypeList, type_list_size<TArgsTypeList> - 2>>;
 
 template<typename TArgsTypeList>
 auto readRouteParams(const std::vector<std::string>& routeParams) -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList>, RouteParameterError>
