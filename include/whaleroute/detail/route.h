@@ -3,7 +3,7 @@
 
 #include "irequestrouter.h"
 #include "routespecifier.h"
-#include "requestprocessor_utils.h"
+#include "requestprocessor.h"
 #include "utils.h"
 #include <whaleroute/types.h>
 #include <functional>

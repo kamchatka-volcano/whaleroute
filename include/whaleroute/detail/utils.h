@@ -82,28 +82,45 @@ inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlash
     return std::regex{rxVal};
 }
 
+template<typename T>
+struct type_wrapper{
+    using type = T;
+};
+template<typename TWrapper>
+using unwrap_type = typename TWrapper::type;
+
+template<typename... T>
+using type_list = std::tuple<type_wrapper<T>...>;
+
+template<std::size_t index, typename TList>
+using type_list_element = unwrap_type<std::remove_reference_t<decltype(std::get<index>(TList{}))>>;
+
+template<std::size_t index, typename TList>
+constexpr auto typeListElement(){
+    auto list = TList{};
+    return type_wrapper<unwrap_type<std::remove_reference_t<decltype(std::get<index>(list))>>>{};
+}
+template<typename TList, std::size_t... I>
+constexpr auto makeTypeListElementsTuple(std::index_sequence<I...>) -> std::tuple<type_list_element<I, TList>...>;
+
+template <typename... T>
+constexpr auto makeDecayTuple (std::tuple<T...> const &)
+   -> std::tuple<std::decay_t<T>...>;
+
 template <typename T>
-struct get_signature;
+using decay_tuple = decltype(makeDecayTuple(std::declval<T>()));
+
+template <typename T>
+struct callable_signature;
 
 template <typename R, typename... Args>
-struct get_signature<std::function<R(Args...)>> {
+struct callable_signature<std::function<R(Args...)>> {
     using return_type = R;
-    using args = std::tuple<Args...>;
+    using args = type_list<Args...>;
 };
 
 template<typename TCallable>
-using callable_args = typename get_signature<decltype(std::function{std::declval<TCallable>()})>::args;
-
-template<typename T, std::size_t... I>
-struct DecaySubTuple{
-    using type = std::tuple<std::decay_t<std::tuple_element_t<I, T>>...>;
-};
-
-template<typename T, std::size_t... I>
-constexpr auto makeDecaySubtuple(std::index_sequence<I...>)
-{
-    return DecaySubTuple<T, I...>{};
-}
+using callable_args = typename callable_signature<decltype(std::function{std::declval<TCallable>()})>::args;
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;

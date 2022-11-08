@@ -1,4 +1,6 @@
-#pragma once
+#ifndef WHALEROUTE_REQUESTPROCESSOR_H
+#define WHALEROUTE_REQUESTPROCESSOR_H
+
 #include "utils.h"
 #include <variant>
 
@@ -10,24 +12,25 @@ constexpr void checkRequestProcessorSignature()
     using args = callable_args<TRequestProcessor>;
     constexpr auto argsSize = std::tuple_size_v<args>;
     static_assert(argsSize >= 2);
-    static_assert(std::is_same_v<const TRequest&, std::tuple_element_t<argsSize - 2, args>>);
-    static_assert(std::is_same_v<TResponse&, std::tuple_element_t<argsSize - 1, args>>);
+    static_assert(std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+    static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
 }
 
 template<typename TArgsTuple>
-using requestProcessorArgsRouteParams = typename decltype(makeDecaySubtuple<TArgsTuple>(std::make_index_sequence<std::tuple_size_v<TArgsTuple> - 2>()))::type;
+using requestProcessorArgsRouteParams = decay_tuple<decltype(makeTypeListElementsTuple<TArgsTuple>(
+        std::make_index_sequence<std::tuple_size_v<TArgsTuple> - 2>()))>;
 
-template<typename TArgsTuple>
-auto readRouteParams(const std::vector<std::string>& routeParams) -> std::variant<requestProcessorArgsRouteParams<TArgsTuple>, RouteParameterError>
+template<typename TArgsTypeList>
+auto readRouteParams(const std::vector<std::string>& routeParams) -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList>, RouteParameterError>
 {
-    constexpr auto argsSize = std::tuple_size_v<TArgsTuple>;
+    constexpr auto argsSize = std::tuple_size_v<TArgsTypeList>;
     constexpr auto paramsSize = argsSize - 2;
     static_assert(paramsSize > 0);
 
     if (routeParams.size() < paramsSize)
         return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
 
-    auto params = requestProcessorArgsRouteParams<TArgsTuple>{};
+    auto params = requestProcessorArgsRouteParams<TArgsTypeList>{};
     auto i = std::size_t{};
     auto error = std::optional<RouteParameterError>{};
     auto readParam = [&](auto& val) {
@@ -61,15 +64,15 @@ void invokeRequestProcessor(
 {
     checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse>();
 
-    using args_t = callable_args<TRequestProcessor>;
-    constexpr auto argsSize = std::tuple_size_v<args_t>;
+    using argsTypeList = callable_args<TRequestProcessor>;
+    constexpr auto argsSize = std::tuple_size_v<argsTypeList>;
     constexpr auto paramsSize = argsSize - 2;
     if constexpr (!paramsSize) {
         requestProcessor(request, response);
         return;
     }
     else {
-        auto paramsResult = readRouteParams<args_t>(routeParams);
+        auto paramsResult = readRouteParams<argsTypeList>(routeParams);
         std::visit(overloaded{
                 [&](const RouteParameterError& error) { routeParamErrorHandler(request, response, error); },
                 [&](const auto& params) {
@@ -81,5 +84,6 @@ void invokeRequestProcessor(
         }, paramsResult);
     }
 }
-
 }
+
+#endif //WHALEROUTE_REQUESTPROCESSOR_H
