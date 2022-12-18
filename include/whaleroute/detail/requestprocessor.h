@@ -19,21 +19,15 @@ constexpr void checkRequestProcessorSignature()
 template<typename TArgsTypeList>
 using requestProcessorArgsRouteParams = decay_tuple<type_list_elements_tuple<TArgsTypeList, type_list_size<TArgsTypeList> - 2>>;
 
-template<typename TArgsTypeList>
-auto readRouteParams(const std::vector<std::string>& routeParams) -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList>, RouteParameterError>
+template<typename TParamsTuple>
+auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TParamsTuple, RouteParameterError>
 {
-    constexpr auto argsSize = std::tuple_size_v<TArgsTypeList>;
-    constexpr auto paramsSize = argsSize - 2;
-    static_assert(paramsSize > 0);
-
-    if (routeParams.size() < paramsSize)
-        return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
-
-    auto params = requestProcessorArgsRouteParams<TArgsTypeList>{};
-    auto i = std::size_t{};
+    auto i = 0;
     auto error = std::optional<RouteParameterError>{};
-    auto readParam = [&](auto& val) {
-        if (error)
+    auto readParam = [&](auto& val){
+        static_assert(!std::is_base_of_v<detail::RouteParameters, std::decay_t<decltype(val)>>,
+                "If you use RouteParameters, it must be the only parameter argument of the request processor callable");
+        if (error.has_value())
             return;
 
         const auto& param = routeParams.at(i++);
@@ -41,16 +35,39 @@ auto readRouteParams(const std::vector<std::string>& routeParams) -> std::varian
         if (paramValue)
             val = *paramValue;
         else
-            error = RouteParameterReadError{static_cast<int>(i), param};
+            error = RouteParameterReadError{i, param};
     };
-
-    std::apply([readParam](auto& ... paramValues) {
+    auto params = TParamsTuple{};
+    std::apply([readParam](auto& ... paramValues){
         ((readParam(paramValues)), ...);
     }, params);
-    if (error)
-        return *error;
 
+    if (error)
+        return error.value();
     return params;
+}
+
+template<typename TArgsTypeList>
+auto readRouteParams(const std::vector<std::string>& routeParams) -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList>, RouteParameterError>
+{
+    constexpr auto argsSize = std::tuple_size_v<TArgsTypeList>;
+    constexpr auto paramsSize = argsSize - 2;
+    static_assert(paramsSize > 0);
+
+    if (paramsSize > routeParams.size())
+        return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
+
+    using ParamsTuple = requestProcessorArgsRouteParams<TArgsTypeList>;
+    if constexpr (std::tuple_size_v<ParamsTuple> == 1 && std::is_base_of_v<detail::RouteParameters, std::tuple_element_t<0, ParamsTuple>>){
+        auto params = ParamsTuple{};
+        auto& paramList = std::get<0>(params);
+        paramList.value = routeParams;
+        if (paramList.numOfElements && *paramList.numOfElements > static_cast<int>(routeParams.size()))
+            return RouteParameterCountMismatch{*paramList.numOfElements, static_cast<int>(routeParams.size())};
+        return params;
+    }
+    else
+        return makeParams<ParamsTuple>(routeParams);
 }
 
 template<typename TRequestProcessor, typename TRequest, typename TResponse>

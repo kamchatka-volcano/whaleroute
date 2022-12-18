@@ -106,6 +106,27 @@ private:
     std::string title_;
 };
 
+struct BookProcessor{
+    void operator()(const whaleroute::RouteParameters<3>& params, const Request&, Response& response)
+    {
+        response.send("Book: " + params.value.at(0) +
+                      ", Chapter: " + params.value.at(1) +
+                      ", page[" + params.value.at(2) + "]");
+    }
+};
+
+struct BookProcessorForAnyParams{
+    void operator()(const whaleroute::RouteParameters<>& params, const Request&, Response& response)
+    {
+        auto id = std::string{};
+        for (const auto& param : params.value)
+            id += param + "#";
+        if (!id.empty())
+            id.pop_back();
+        response.send("Book: " + id);
+    }
+};
+
 class ChapterNameProcessor
 {
 public:
@@ -126,6 +147,10 @@ TEST_F(Router, Matching)
     route("/upload", RequestType::POST).process([](const Request&, Response& response){ response.send("OK");});
     route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
     route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+))"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+))"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    route(whaleroute::rx{R"(/book/(\w+)/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
     auto parametrizedProcessor = ChapterNameProcessor{};
     route(whaleroute::rx{R"(/chapter_(.+))"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
@@ -160,6 +185,18 @@ TEST_F(Router, Matching)
 
     processRequest("/chapter_test/page_123");
     checkResponse("TestBook Chapter: test, page[123]");
+
+    processRequest("/book-Hello_world/chapter/test/page/123");
+    checkResponse("Book: Hello_world, Chapter: test, page[123]");
+
+    processRequest("/book-Hello_world/chapter/test/");
+    checkResponse("ROUTE_PARAM_ERROR: PARAM COUNT MISMATCH, EXPECTED:3 ACTUAL:2");
+
+    processRequest("/book/Hello/");
+    checkResponse("Book: Hello");
+
+    processRequest("/book/Hello/world/");
+    checkResponse("Book: Hello#world");
 
     processRequest("/chapter_test");
     checkResponse("Chapter: test");

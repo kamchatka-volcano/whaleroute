@@ -3,6 +3,8 @@
 
 #include <string>
 #include <variant>
+#include <vector>
+#include <optional>
 
 namespace whaleroute{
 
@@ -26,6 +28,24 @@ enum class RegexMode{
 struct rx{
     std::string value;
 };
+
+namespace detail{
+struct RouteParameters{
+    std::optional<int> numOfElements;
+    std::vector<std::string> value;
+};
+}
+
+template<int size = 0>
+struct RouteParameters : detail::RouteParameters{
+    RouteParameters()
+    {
+        if constexpr (size > 0)
+            numOfElements = size;
+    }
+};
+
+
 
 struct RouteParameterCountMismatch{
     int expectedNumber;
