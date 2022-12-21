@@ -7,6 +7,7 @@ SealLake_GoogleTest(
             test_alt_regex_specifying.cpp
             test_response_value_arguments.cpp
             test_multiple_route_specifiers.cpp
+            test_router_without_route_context.cpp
             test_router_without_response_value.cpp
             test_router_without_route_specifiers.cpp
             test_router_without_route_specifiers_and_response_value.cpp

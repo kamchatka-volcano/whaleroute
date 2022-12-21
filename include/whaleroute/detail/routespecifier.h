@@ -8,29 +8,41 @@
 
 namespace whaleroute::detail {
 
-template <typename TRequest, typename TResponse>
+template <typename TRequest, typename TResponse, typename TRouteContext>
 class RouteSpecifier {
+    using ThisRouteSpecifier = RouteSpecifier<TRequest, TResponse, TRouteContext>;
+
 public:
     template <
             typename TArg,
             std::enable_if_t<
-                    !std::is_base_of_v<RouteSpecifier<TRequest, TResponse>, std::remove_reference_t<TArg>> &&
-                    !std::is_same_v<TArg, std::vector<RouteSpecifier<TRequest, TResponse>>>>* = nullptr>
+                    !std::is_base_of_v<ThisRouteSpecifier, std::remove_reference_t<TArg>> &&
+                    !std::is_same_v<TArg, std::vector<ThisRouteSpecifier>>>* = nullptr>
     RouteSpecifier(TArg&& arg)
     {
-        predicate_ = [arg = std::forward<TArg>(arg)](const TRequest& request, TResponse& response)
+        predicate_ = [arg = std::forward<TArg>(arg)]( //
+                             const TRequest& request,
+                             TResponse& response,
+                             TRouteContext& routeContext)
         {
-            return config::RouteSpecification<TArg, TRequest, TResponse>{}(arg, request, response);
+            if constexpr (std::is_same_v<TRouteContext, _>)
+                return config::RouteSpecification<TArg, TRequest, TResponse, TRouteContext>{}(arg, request, response);
+            else
+                return config::RouteSpecification<TArg, TRequest, TResponse, TRouteContext>{}(
+                        arg,
+                        request,
+                        response,
+                        routeContext);
         };
     }
 
-    bool operator()(const TRequest& request, TResponse& response) const
+    bool operator()(const TRequest& request, TResponse& response, TRouteContext& routeContext) const
     {
-        return predicate_(request, response);
+        return predicate_(request, response, routeContext);
     }
 
 private:
-    std::function<bool(const TRequest&, TResponse&)> predicate_;
+    std::function<bool(const TRequest&, TResponse&, TRouteContext&)> predicate_;
 };
 
 } // namespace whaleroute::detail

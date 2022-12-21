@@ -6,19 +6,39 @@
 
 namespace whaleroute::detail {
 
-template <typename TRequestProcessor, typename TRequest, typename TResponse>
+template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 constexpr void checkRequestProcessorSignature()
 {
     using args = callable_args<TRequestProcessor>;
     constexpr auto argsSize = std::tuple_size_v<args>;
     static_assert(argsSize >= 2);
-    static_assert(std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
-    static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+    if constexpr (std::is_same_v<TRouteContext, _>) {
+        static_assert(std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+        static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+    }
+    else {
+        if constexpr (argsSize == 2) {
+            static_assert(
+                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+        }
+        else if constexpr (std::is_same_v<
+                                   TRouteContext&,
+                                   typename decltype(typeListElement<argsSize - 1, args>())::type>) {
+            static_assert(
+                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 3, args>())::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+        }
+        else {
+            static_assert(
+                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+        }
+    }
 }
 
-template <typename TArgsTypeList>
-using requestProcessorArgsRouteParams =
-        decay_tuple<type_list_elements_tuple<TArgsTypeList, type_list_size<TArgsTypeList> - 2>>;
+template <typename TArgsTypeList, int paramsSize>
+using requestProcessorArgsRouteParams = decay_tuple<type_list_elements_tuple<TArgsTypeList, paramsSize>>;
 
 template <typename TParamsTuple>
 auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TParamsTuple, RouteParameterError>
@@ -53,18 +73,16 @@ auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TPa
     return params;
 }
 
-template <typename TArgsTypeList>
+template <typename TArgsTypeList, int paramsSize>
 auto readRouteParams(const std::vector<std::string>& routeParams)
-        -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList>, RouteParameterError>
+        -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList, paramsSize>, RouteParameterError>
 {
-    constexpr auto argsSize = std::tuple_size_v<TArgsTypeList>;
-    constexpr auto paramsSize = argsSize - 2;
     static_assert(paramsSize > 0);
 
     if (paramsSize > routeParams.size())
         return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
 
-    using ParamsTuple = requestProcessorArgsRouteParams<TArgsTypeList>;
+    using ParamsTuple = requestProcessorArgsRouteParams<TArgsTypeList, paramsSize>;
     if constexpr (
             std::tuple_size_v<ParamsTuple> == 1 &&
             std::is_base_of_v<detail::RouteParameters, std::tuple_element_t<0, ParamsTuple>>) {
@@ -79,41 +97,55 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
         return makeParams<ParamsTuple>(routeParams);
 }
 
-template <typename TRequestProcessor, typename TRequest, typename TResponse>
+template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 void invokeRequestProcessor(
         TRequestProcessor& requestProcessor,
         const TRequest& request,
         TResponse& response,
         const std::vector<std::string>& routeParams,
+        TRouteContext& routeContext,
         std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParamErrorHandler)
 {
-    checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse>();
+    checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse, TRouteContext>();
 
     using argsTypeList = callable_args<TRequestProcessor>;
     constexpr auto argsSize = std::tuple_size_v<argsTypeList>;
-    constexpr auto paramsSize = argsSize - 2;
+    constexpr auto paramsSize = []
+    {
+        if constexpr (
+                argsSize > 2 &&
+                std::is_same_v<typename decltype(typeListElement<argsSize - 1, argsTypeList>())::type, TRouteContext&>)
+            return argsSize - 3;
+        else
+            return argsSize - 2;
+    }();
     if constexpr (!paramsSize) {
-        requestProcessor(request, response);
-        return;
+        if constexpr (argsSize == 2)
+            requestProcessor(request, response);
+        else
+            requestProcessor(request, response, routeContext);
     }
     else {
-        auto paramsResult = readRouteParams<argsTypeList>(routeParams);
-        std::visit(
-                overloaded{
-                        [&](const RouteParameterError& error)
-                        {
-                            if (routeParamErrorHandler)
-                                routeParamErrorHandler(request, response, error);
-                        },
-                        [&](const auto& params)
-                        {
-                            auto callProcess = [&](const auto&... param)
-                            {
-                                requestProcessor(param..., request, response);
-                            };
-                            std::apply(callProcess, params);
-                        }},
-                paramsResult);
+        auto paramsResult = readRouteParams<argsTypeList, paramsSize>(routeParams);
+        auto paramsResultVisitor = overloaded{
+                [&](const RouteParameterError& error)
+                {
+                    if (routeParamErrorHandler)
+                        routeParamErrorHandler(request, response, error);
+                },
+                [&](const auto& params)
+                {
+                    auto callProcess = [&](const auto&... param)
+                    {
+                        if constexpr (argsSize - paramsSize == 2)
+                            requestProcessor(param..., request, response);
+                        else
+                            requestProcessor(param..., request, response, routeContext);
+                    };
+                    std::apply(callProcess, params);
+                }};
+
+        std::visit(paramsResultVisitor, paramsResult);
     }
 }
 } // namespace whaleroute::detail

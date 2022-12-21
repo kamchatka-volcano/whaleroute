@@ -12,20 +12,21 @@
 #include <vector>
 
 namespace whaleroute {
-template <typename TRequest, typename TResponse, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class RequestRouter;
 }
 
 namespace whaleroute::detail {
 
-template <typename TRequest, typename TResponse, typename TResponseValue>
+template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class Route {
-    using ProcessorFunc = std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&)>;
-    friend class RequestRouter<TRequest, TResponse, TResponseValue>;
+    using ProcessorFunc =
+            std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
+    friend class RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
-          std::vector<RouteSpecifier<TRequest, TResponse>> routeSpecifiers,
+          std::vector<RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifiers,
           std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
         : router_{router}
         , routeSpecifiers_{std::move(routeSpecifiers)}
@@ -42,27 +43,33 @@ public:
                     [requestProcessor, this](
                             const TRequest& request,
                             TResponse& response,
-                            const std::vector<std::string>& routeParams) mutable
+                            const std::vector<std::string>& routeParams,
+                            TRouteContext& routeContext) mutable
                     {
                         invokeRequestProcessor<TProcessor, TRequest, TResponse>(
                                 requestProcessor,
                                 request,
                                 response,
                                 routeParams,
+                                routeContext,
                                 routeParameterErrorHandler_);
                     });
         }
         else {
             auto requestProcessor = std::make_shared<TProcessor>(std::forward<TArgs>(args)...);
             processorList_.emplace_back(
-                    [requestProcessor,
-                     this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams)
+                    [requestProcessor, this]( //
+                            const TRequest& request,
+                            TResponse& response,
+                            const std::vector<std::string>& routeParams,
+                            TRouteContext& routeContext)
                     {
                         invokeRequestProcessor<TProcessor, TRequest, TResponse>(
                                 *requestProcessor,
                                 request,
                                 response,
                                 routeParams,
+                                routeContext,
                                 routeParameterErrorHandler_);
                     });
         }
@@ -73,14 +80,18 @@ public:
     Route& process(TProcessor& requestProcessor)
     {
         processorList_.emplace_back(
-                [&requestProcessor,
-                 this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams)
+                [&requestProcessor, this]( //
+                        const TRequest& request,
+                        TResponse& response,
+                        const std::vector<std::string>& routeParams,
+                        TRouteContext& routeContext)
                 {
                     invokeRequestProcessor(
                             requestProcessor,
                             request,
                             response,
                             routeParams,
+                            routeContext,
                             routeParameterErrorHandler_);
                 });
         return *this;
@@ -90,14 +101,18 @@ public:
     Route& process(TProcessor&& requestProcessor)
     {
         processorList_.emplace_back(
-                [requestProcessor = std::forward<TProcessor>(requestProcessor),
-                 this](const TRequest& request, TResponse& response, const std::vector<std::string>& routeParams)
+                [requestProcessor = std::forward<TProcessor>(requestProcessor), this]( //
+                        const TRequest& request,
+                        TResponse& response,
+                        const std::vector<std::string>& routeParams,
+                        TRouteContext& routeContext)
                 {
                     invokeRequestProcessor(
                             requestProcessor,
                             request,
                             response,
                             routeParams,
+                            routeContext,
                             routeParameterErrorHandler_);
                 });
         return *this;
@@ -111,31 +126,36 @@ public:
     {
         auto responseValue = TResponseValue{std::forward<TArgs>(args)...};
         processorList_.emplace_back(
-                [responseValue, this](const TRequest&, TResponse& response, const std::vector<std::string>&) mutable
+                [responseValue, this]( //
+                        const TRequest&,
+                        TResponse& response,
+                        const std::vector<std::string>&,
+                        TRouteContext&) mutable
                 {
                     router_.setResponseValue(response, responseValue);
                 });
     }
 
 private:
-    std::vector<ProcessorFunc> getRequestProcessor(const TRequest&, TResponse&)
+    std::vector<ProcessorFunc> getRequestProcessors() const
     {
         auto toFilteredProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc
         {
             return [this, &processor](
                            const TRequest& request,
                            TResponse& response,
-                           const std::vector<std::string>& routeParams)
+                           const std::vector<std::string>& routeParams,
+                           TRouteContext& routeContext)
             {
                 if (!std::all_of(
                             routeSpecifiers_.begin(),
                             routeSpecifiers_.end(),
-                            [&request, &response](auto& routeSpecifier) -> bool
+                            [&request, &response, &routeContext](auto& routeSpecifier) -> bool
                             {
-                                return routeSpecifier(request, response);
+                                return routeSpecifier(request, response, routeContext);
                             }))
                     return;
-                processor(request, response, routeParams);
+                processor(request, response, routeParams, routeContext);
             };
         };
 
@@ -151,7 +171,7 @@ private:
 private:
     std::vector<ProcessorFunc> processorList_;
     IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
-    std::vector<RouteSpecifier<TRequest, TResponse>> routeSpecifiers_;
+    std::vector<RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifiers_;
     std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };
 

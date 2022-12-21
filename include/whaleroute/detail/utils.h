@@ -136,6 +136,9 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
+template <typename T>
+inline constexpr auto dependent_false = false;
+
 } // namespace whaleroute::detail
 
 #endif // WHALEROUTE_UTILS_H

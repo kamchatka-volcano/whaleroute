@@ -12,9 +12,11 @@
 
 namespace whaleroute {
 
-template <typename TRequest, typename TResponse, typename TResponseValue = _>
+template <typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
 class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
-    using TRoute = detail::Route<TRequest, TResponse, TResponseValue>;
+    using TRoute = detail::Route<TRequest, TResponse, TResponseValue, TRouteContext>;
+    using RequestProcessorFunc =
+            std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
 
     struct RegExpRouteMatch {
         std::regex regExp;
@@ -75,20 +77,20 @@ public:
         queue.launch();
     }
 
-    RequestProcessorQueue makeRequestProcessorQueue(const TRequest& request, TResponse& response)
+    RequestProcessorQueue<TRouteContext> makeRequestProcessorQueue(const TRequest& request, TResponse& response)
     {
         auto requestProcessorInvokerList = makeRouteRequestProcessorInvokerList(request, response);
-        for (const auto& processor : noMatchRoute_.getRequestProcessor(request, response))
+        for (const auto& processor : noMatchRoute_.getRequestProcessors())
             requestProcessorInvokerList.emplace_back(
-                    [request, response, processor]() mutable -> bool
+                    [request, response, processor](TRouteContext& routeContext) mutable -> bool
                     {
-                        processor(request, response, {});
+                        processor(request, response, {}, routeContext);
                         return false;
                     });
 
         if (requestProcessorInvokerList.empty())
             requestProcessorInvokerList.emplace_back(
-                    [request, response, this]() mutable -> bool
+                    [request, response, this](TRouteContext&) mutable -> bool
                     {
                         this->processUnmatchedRequest(request, response);
                         return false;
@@ -111,64 +113,62 @@ private:
         };
     }
 
-    std::vector<std::function<bool()>> makeRouteRequestProcessorInvokerList(
+    std::vector<std::function<bool(TRouteContext&)>> makeRouteRequestProcessorInvokerList(
             const TRequest& request,
             TResponse& response)
     {
-        auto result = std::vector<std::function<bool()>>{};
-        for (auto& match : routeMatchList_) {
-            std::visit(
-                    [&](auto& match)
-                    {
-                        using T = std::decay_t<decltype(match)>;
-                        if constexpr (std::is_same_v<T, RegExpRouteMatch>) {
-                            auto matchList = std::smatch{};
-                            const auto requestPath =
-                                    detail::makePath(this->getRequestPath(request), trailingSlashMode_);
-                            if (std::regex_match(requestPath, matchList, match.regExp)) {
-                                auto routeParams = std::vector<std::string>{};
-                                for (auto i = 1u; i < matchList.size(); ++i)
-                                    routeParams.push_back(matchList[i].str());
+        auto result = std::vector<std::function<bool(TRouteContext&)>>{};
+        const auto matchVisitor = detail::overloaded{
+                [&](const RegExpRouteMatch& match)
+                {
+                    auto matchList = std::smatch{};
+                    const auto requestPath = detail::makePath(this->getRequestPath(request), trailingSlashMode_);
+                    if (std::regex_match(requestPath, matchList, match.regExp)) {
+                        auto routeParams = std::vector<std::string>{};
+                        for (auto i = 1u; i < matchList.size(); ++i)
+                            routeParams.push_back(matchList[i].str());
 
-                                detail::concat(
-                                        result,
-                                        makeRequestProcessorInvokerList(
-                                                match.route.getRequestProcessor(request, response),
-                                                request,
-                                                response,
-                                                routeParams));
-                            }
-                        }
-                        else if constexpr (std::is_same_v<T, PathRouteMatch>) {
-                            if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
-                                detail::concat(
-                                        result,
-                                        makeRequestProcessorInvokerList(
-                                                match.route.getRequestProcessor(request, response),
-                                                request,
-                                                response,
-                                                {}));
-                        }
-                    },
-                    match);
-        }
+                        detail::concat(
+                                result,
+                                makeRequestProcessorInvokerList(
+                                        match.route.getRequestProcessors(),
+                                        request,
+                                        response,
+                                        routeParams));
+                    }
+                },
+                [&](const PathRouteMatch& match)
+                {
+                    if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
+                        detail::concat(
+                                result,
+                                makeRequestProcessorInvokerList(
+                                        match.route.getRequestProcessors(),
+                                        request,
+                                        response,
+                                        {}));
+                }};
+
+        for (auto& match : routeMatchList_)
+            std::visit(matchVisitor, match);
+
         return result;
     }
 
-    std::vector<std::function<bool()>> makeRequestProcessorInvokerList(
-            const std::vector<std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&)>>&
-                    processorList,
+    std::vector<std::function<bool(TRouteContext&)>> makeRequestProcessorInvokerList(
+            const std::vector<RequestProcessorFunc>& processorList,
             const TRequest& request,
             TResponse& response,
             const std::vector<std::string>& routeParams)
     {
-        auto result = std::vector<std::function<bool()>>{};
+        auto result = std::vector<std::function<bool(TRouteContext&)>>{};
         for (const auto& processor : processorList) {
             auto checkIfFinished = (&processor == &processorList.back());
             result.emplace_back(
-                    [request, response, processor, checkIfFinished, routeParams, this]() mutable -> bool
+                    [request, response, processor, checkIfFinished, routeParams, this](
+                            TRouteContext& routeContext) mutable -> bool
                     {
-                        processor(request, response, routeParams);
+                        processor(request, response, routeParams, routeContext);
                         if (checkIfFinished)
                             return !isRouteProcessingFinished(request, response);
                         else
@@ -180,7 +180,7 @@ private:
 
     TRoute& pathRouteImpl(
             const std::string& path,
-            std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
+            std::vector<detail::RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifications = {})
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(
@@ -190,7 +190,7 @@ private:
 
     TRoute& regexRouteImpl(
             const rx& regExp,
-            std::vector<detail::RouteSpecifier<TRequest, TResponse>> routeSpecifications = {})
+            std::vector<detail::RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifications = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
                 detail::makeRegex(regExp, regexMode_, trailingSlashMode_),
