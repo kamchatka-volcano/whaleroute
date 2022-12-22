@@ -31,6 +31,7 @@ struct Response{
     struct State {
         std::string data;
         bool wasSent = false;
+        std::string context;
     };
     std::shared_ptr<State> state;
     std::vector<std::string> routeParams;

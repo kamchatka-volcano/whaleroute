@@ -92,15 +92,29 @@ public:
     }
 
 private:
-    std::vector<ProcessorFunc> getRequestProcessor(const TRequest& request, TResponse& response)
+    std::vector<ProcessorFunc> getRequestProcessor(const TRequest&, TResponse&)
     {
-        if (!std::all_of(routeSpecifiers_.begin(), routeSpecifiers_.end(),
-                 [&request, &response](auto& routeSpecifier) -> bool {
-                     return routeSpecifier(request, response);
-                 }))
-            return {};
+        auto toFilteredProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc{
+            return [this, &processor](
+                    const TRequest& request,
+                    TResponse& response,
+                    const std::vector<std::string>& routeParams){
+                if (!std::all_of(routeSpecifiers_.begin(), routeSpecifiers_.end(),
+                        [&request, &response](auto& routeSpecifier) -> bool{
+                            return routeSpecifier(request, response);
+                        }))
+                    return;
+                processor(request, response, routeParams);
+            };
+        };
 
-        return processorList_;
+        auto result = std::vector<ProcessorFunc>{};
+        std::transform(
+                processorList_.begin(),
+                processorList_.end(),
+                std::back_inserter(result),
+                toFilteredProcessorFunc);
+        return result;
     }
 
 private:

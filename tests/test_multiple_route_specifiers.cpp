@@ -14,9 +14,9 @@ struct RouteSpecification<RequestType, TRequest, TResponse> {
 
 template<typename TRequest, typename TResponse>
 struct RouteSpecification<std::string, TRequest, TResponse> {
-    bool operator()(const std::string& value, const TRequest& request, TResponse&) const
+    bool operator()(const std::string& value, const TRequest& request, TResponse& response) const
     {
-        return value == request.name;
+        return value == request.name || value == response.state->context;
     }
 };
 
@@ -53,7 +53,12 @@ protected:
 
     void setResponseValue(Response& response, const std::string& value) final
     {
-        response.state->data = value;
+        response.send(value);
+    }
+
+    bool isRouteProcessingFinished(const Request&, Response& response) const final
+    {
+        return response.state->wasSent;
     }
 
 protected:
@@ -79,6 +84,19 @@ TEST_F(MultipleRouteSpecifiers, Default)
 
     processRequest("/foo", RequestType::GET);
     checkResponse("404");
+}
+
+TEST_F(MultipleRouteSpecifiers, ContextMatchingSpecifier)
+{
+    route("/", RequestType::GET).set("Hello world");
+    route(whaleroute::rx{".+"}).process([](const Request&, Response& response){
+        response.state->context = "Sender";
+    });
+    route("/moon", RequestType::GET, "Sender"s).set("Hello moon from sender");
+    route().set("404");
+
+    processRequest("/moon", RequestType::GET);
+    checkResponse("Hello moon from sender");
 }
 
 }
