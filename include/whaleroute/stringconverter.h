@@ -1,20 +1,20 @@
 #ifndef WHALEROUTE_STRINGCONVERTER_H
 #define WHALEROUTE_STRINGCONVERTER_H
 
-#include <string>
-#include <sstream>
 #include <optional>
+#include <sstream>
+#include <string>
 
-namespace whaleroute::config{
+namespace whaleroute::config {
 
-template<typename T>
-struct StringConverter{
+template <typename T>
+struct StringConverter {
     static std::optional<T> fromString(const std::string& data)
     {
-        if constexpr(std::is_convertible_v<T, std::string>){
+        if constexpr (std::is_convertible_v<T, std::string>) {
             return data;
         }
-        else{
+        else {
             auto value = T{};
             auto stream = std::stringstream{data};
             stream >> value;
@@ -26,6 +26,6 @@ struct StringConverter{
     }
 };
 
-}
+} // namespace whaleroute::config
 
-#endif //WHALEROUTE_STRINGCONVERTER_H
+#endif // WHALEROUTE_STRINGCONVERTER_H

@@ -4,32 +4,40 @@
 #include <algorithm>
 
 namespace whaleroute::config {
-template<typename TRequest, typename TResponse>
+template <typename TRequest, typename TResponse>
 struct RouteSpecification<RequestType, TRequest, TResponse> {
     bool operator()(RequestType value, const TRequest& request, TResponse&) const
     {
         return value == request.type;
     }
 };
-}
+} // namespace whaleroute::config
 
 namespace response_value_arguments {
 
-class TestString{
+class TestString {
 public:
-    enum class CaseMode{Original, UpperCase};
+    enum class CaseMode {
+        Original,
+        UpperCase
+    };
+
     TestString(std::string value, CaseMode caseMode = CaseMode::Original)
-    : value_{std::move(value)}
+        : value_{std::move(value)}
     {
         if (caseMode == CaseMode::UpperCase)
-            std::transform(value_.cbegin(), value_.cend(), value_.begin(), [](unsigned char ch){
-                return static_cast<char>(std::toupper(ch));
-            });
+            std::transform(
+                    value_.cbegin(),
+                    value_.cend(),
+                    value_.begin(),
+                    [](unsigned char ch)
+                    {
+                        return static_cast<char>(std::toupper(ch));
+                    });
     }
     TestString(const char* value, CaseMode caseMode = CaseMode::Original)
-    : TestString{std::string{value}, caseMode}
+        : TestString{std::string{value}, caseMode}
     {
-
     }
     std::string value() const
     {
@@ -41,7 +49,7 @@ private:
 };
 
 class ResponseValueFromArgs : public ::testing::Test,
-                               public whaleroute::RequestRouter<Request, Response, TestString> {
+                              public whaleroute::RequestRouter<Request, Response, TestString> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
@@ -88,4 +96,4 @@ TEST_F(ResponseValueFromArgs, Default)
     checkResponse("NOT FOUND");
 }
 
-}
+} // namespace response_value_arguments

@@ -3,12 +3,12 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-struct ChapterString{
+struct ChapterString {
     std::string value;
 };
 
-namespace whaleroute::config{
-template<typename TRequest, typename TResponse>
+namespace whaleroute::config {
+template <typename TRequest, typename TResponse>
 struct RouteSpecification<RequestType, TRequest, TResponse> {
     bool operator()(RequestType value, const TRequest& request, TResponse&) const
     {
@@ -16,16 +16,16 @@ struct RouteSpecification<RequestType, TRequest, TResponse> {
     }
 };
 
-template<>
-struct StringConverter<ChapterString>{
+template <>
+struct StringConverter<ChapterString> {
     static std::optional<ChapterString> fromString(const std::string& data)
     {
         return ChapterString{data};
     }
 };
-}
+} // namespace whaleroute::config
 
-namespace alt_regex_specifying{
+namespace alt_regex_specifying {
 
 class AltRegexSpecifying : public ::testing::Test,
                            public whaleroute::RequestRouter<Request, Response, std::string> {
@@ -64,7 +64,8 @@ protected:
         return response.state->wasSent;
     }
 
-    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error) override
+    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error)
+            override
     {
         response.send(getRouteParamErrorInfo(error));
     }
@@ -73,12 +74,12 @@ protected:
     std::string responseData_;
 };
 
-class GreeterPageProcessor
-{
+class GreeterPageProcessor {
 public:
     GreeterPageProcessor(std::string name = {})
         : name_(std::move(name))
-    {}
+    {
+    }
 
     void operator()(const Request&, Response& response)
     {
@@ -89,30 +90,30 @@ private:
     std::string name_;
 };
 
-class ChapterNamePageIndexProcessor
-{
+class ChapterNamePageIndexProcessor {
 public:
     ChapterNamePageIndexProcessor(std::string title = {})
         : title_{std::move(title)}
-    {}
+    {
+    }
 
     void operator()(const std::string& chapterName, const int& pageIndex, const Request&, Response& response)
     {
-        response.send(title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" + std::to_string(pageIndex) + "]");
+        response.send(
+                title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" +
+                std::to_string(pageIndex) + "]");
     }
 
 private:
     std::string title_;
 };
 
-struct ChapterNameProcessor
-{
+struct ChapterNameProcessor {
     void operator()(const ChapterString& chapterName, const Request&, Response& response)
     {
         response.send("Chapter: " + chapterName.value);
     }
 };
-
 
 TEST_F(AltRegexSpecifying, StringLiterals)
 {
@@ -120,19 +121,36 @@ TEST_F(AltRegexSpecifying, StringLiterals)
 
     route("/", RequestType::GET).process<GreeterPageProcessor>();
     route("/moon", RequestType::GET).process<GreeterPageProcessor>("Moon");
-    route("/page0", RequestType::GET).process([](const Request&, Response& response){ response.send("Default page");});
-    route(R"(/page\d*)"_rx, RequestType::GET).process([](const Request&, Response& response){ response.send("Some page");});
-    route("/upload", RequestType::POST).process([](const Request&, Response& response){ response.send("OK");});
+    route("/page0", RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Default page");
+                    });
+    route(R"(/page\d*)"_rx, RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Some page");
+                    });
+    route("/upload", RequestType::POST)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("OK");
+                    });
     route(R"(/chapter/(.+)/page(\d+))"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>();
     route(R"(/chapter_(.+)/page_(\d+))"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
     route(R"(/chapter_(.+))"_rx, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(R"(/files/(.*\.xml))"_rx, RequestType::GET).process(
-            [](const std::string& fileName, const Request&, Response& response) {
-                auto fileContent = std::string{"XML file: " + fileName};
-                response.send(fileContent);
-            });
+    route(R"(/files/(.*\.xml))"_rx, RequestType::GET)
+            .process(
+                    [](const std::string& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"XML file: " + fileName};
+                        response.send(fileContent);
+                    });
     route().set("404");
 
     processRequest("/");
@@ -184,19 +202,37 @@ TEST_F(AltRegexSpecifying, TildaEscape)
     setRegexMode(whaleroute::RegexMode::TildaEscape);
     route("/", RequestType::GET).process<GreeterPageProcessor>();
     route("/moon", RequestType::GET).process<GreeterPageProcessor>("Moon");
-    route("/page0", RequestType::GET).process([](const Request&, Response& response){ response.send("Default page");});
-    route(whaleroute::rx{"/page~d*"}, RequestType::GET).process([](const Request&, Response& response){ response.send("Some page");});
-    route("/upload", RequestType::POST).process([](const Request&, Response& response){ response.send("OK");});
+    route("/page0", RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Default page");
+                    });
+    route(whaleroute::rx{"/page~d*"}, RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Some page");
+                    });
+    route("/upload", RequestType::POST)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("OK");
+                    });
     route(whaleroute::rx{"/chapter/(.+)/page(~d+)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(whaleroute::rx{"/chapter_(.+)/page_(~d+)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
+    route(whaleroute::rx{"/chapter_(.+)/page_(~d+)"}, RequestType::GET)
+            .process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
     route(whaleroute::rx{"/chapter_(.+)"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(whaleroute::rx{"/files/(.*~.xml)"}, RequestType::GET).process(
-            [](const std::string& fileName, const Request&, Response& response) {
-                auto fileContent = std::string{"XML file: " + fileName};
-                response.send(fileContent);
-            });
+    route(whaleroute::rx{"/files/(.*~.xml)"}, RequestType::GET)
+            .process(
+                    [](const std::string& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"XML file: " + fileName};
+                        response.send(fileContent);
+                    });
     route().set("404");
 
     processRequest("/");
@@ -254,19 +290,36 @@ TEST_F(AltRegexSpecifying, StringLiteralsAndTildaEscape)
     route("/~~moon"_rx, RequestType::GET).process<GreeterPageProcessor>("~Moon");
     route("/m~~n"_rx, RequestType::GET).process<GreeterPageProcessor>("M~n");
     route("/~~m~~n~~"_rx, RequestType::GET).process<GreeterPageProcessor>("~M~n~");
-    route("/page0", RequestType::GET).process([](const Request&, Response& response){ response.send("Default page");});
-    route("/page~d*"_rx, RequestType::GET).process([](const Request&, Response& response){ response.send("Some page");});
-    route("/upload", RequestType::POST).process([](const Request&, Response& response){ response.send("OK");});
+    route("/page0", RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Default page");
+                    });
+    route("/page~d*"_rx, RequestType::GET)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Some page");
+                    });
+    route("/upload", RequestType::POST)
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("OK");
+                    });
     route("/chapter/(.+)/page(~d+)"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>();
     route("/chapter_(.+)/page_(~d+)"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
     route("/chapter_(.+)"_rx, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route("/files/(.*~.xml)"_rx, RequestType::GET).process(
-            [](const std::string& fileName, const Request&, Response& response) {
-                auto fileContent = std::string{"XML file: " + fileName};
-                response.send(fileContent);
-            });
+    route("/files/(.*~.xml)"_rx, RequestType::GET)
+            .process(
+                    [](const std::string& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"XML file: " + fileName};
+                        response.send(fileContent);
+                    });
     route().set("404");
 
     processRequest("/");
@@ -325,7 +378,4 @@ TEST_F(AltRegexSpecifying, StringLiteralsAndTildaEscape)
     checkResponse("404");
 }
 
-
-
-
-}
+} // namespace alt_regex_specifying

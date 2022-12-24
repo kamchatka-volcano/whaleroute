@@ -3,9 +3,9 @@
 
 #include <whaleroute/types.h>
 
-namespace whaleroute::detail{
+namespace whaleroute::detail {
 
-template<typename TResponse, typename TResponseValue>
+template <typename TResponse, typename TResponseValue>
 class IRequestRouterWithResponseValue {
 public:
     virtual ~IRequestRouterWithResponseValue() = default;
@@ -14,15 +14,16 @@ public:
 };
 
 template <typename T>
-class Without{};
+class Without {};
 
 template <typename TResponse, typename TResponseValue>
-using MaybeWithResponseValue = std::conditional_t<!std::is_same_v<TResponseValue, _>,
-                                                  IRequestRouterWithResponseValue<TResponse, TResponseValue>,
-                                                  Without<IRequestRouterWithResponseValue<TResponse, TResponseValue>>>;
+using MaybeWithResponseValue = std::conditional_t<
+        !std::is_same_v<TResponseValue, _>,
+        IRequestRouterWithResponseValue<TResponse, TResponseValue>,
+        Without<IRequestRouterWithResponseValue<TResponse, TResponseValue>>>;
 
-template<typename TRequest, typename TResponse, typename TResponseValue>
-class IRequestRouter : public MaybeWithResponseValue<TResponse, TResponseValue>{
+template <typename TRequest, typename TResponse, typename TResponseValue>
+class IRequestRouter : public MaybeWithResponseValue<TResponse, TResponseValue> {
 public:
     virtual ~IRequestRouter() = default;
     virtual std::string getRequestPath(const TRequest&) = 0;
@@ -30,6 +31,6 @@ public:
     virtual void onRouteParametersError(const TRequest&, TResponse&, const RouteParameterError&){};
 };
 
-}
+} // namespace whaleroute::detail
 
-#endif //WHALEROUTE_IREQUESTROUTER_H
+#endif // WHALEROUTE_IREQUESTROUTER_H

@@ -2,21 +2,21 @@
 #include <whaleroute/requestrouter.h>
 #include <gtest/gtest.h>
 
-struct ChapterString{
+struct ChapterString {
     std::string value;
 };
 
 namespace whaleroute::config {
-template<>
+template <>
 struct StringConverter<ChapterString> {
     static std::optional<ChapterString> fromString(const std::string& data)
     {
         return ChapterString{data};
     }
 };
-}
+} // namespace whaleroute::config
 
-namespace without_route_specifiers{
+namespace without_route_specifiers {
 class RouterWithoutRouteSpecifiers : public ::testing::Test,
                                      public whaleroute::RequestRouter<Request, Response, std::string> {
 public:
@@ -54,7 +54,8 @@ protected:
         return response.state->wasSent;
     }
 
-    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error) override
+    void onRouteParametersError(const Request&, Response& response, const whaleroute::RouteParameterError& error)
+            override
     {
         response.send(getRouteParamErrorInfo(error));
     }
@@ -63,12 +64,12 @@ protected:
     std::string responseData_;
 };
 
-class GreeterPageProcessor
-{
+class GreeterPageProcessor {
 public:
     GreeterPageProcessor(std::string name = {})
         : name_(std::move(name))
-    {}
+    {
+    }
 
     void operator()(const Request&, Response& response)
     {
@@ -79,24 +80,25 @@ private:
     std::string name_;
 };
 
-class ChapterNamePageIndexProcessor
-{
+class ChapterNamePageIndexProcessor {
 public:
     ChapterNamePageIndexProcessor(std::string title = {})
         : title_{std::move(title)}
-    {}
+    {
+    }
 
     void operator()(const std::string& chapterName, int pageIndex, const Request&, Response& response)
     {
-        response.send(title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" + std::to_string(pageIndex) + "]");
+        response.send(
+                title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + //
+                ", page[" + std::to_string(pageIndex) + "]");
     }
 
 private:
     std::string title_;
 };
 
-struct ChapterNameProcessor
-{
+struct ChapterNameProcessor {
     void operator()(const ChapterString& chapterName, const Request&, Response& response)
     {
         response.send("Chapter: " + chapterName.value);
@@ -107,19 +109,34 @@ TEST_F(RouterWithoutRouteSpecifiers, Matching)
 {
     route("/").process<GreeterPageProcessor>();
     route("/moon").process<GreeterPageProcessor>("Moon");
-    route("/page0").process([](const Request&, Response& response){ response.send("Default page");});
-    route(whaleroute::rx{R"(/page\d*)"}).process([](const Request&, Response& response){ response.send("Some page");});
-    route("/upload").process([](const Request&, Response& response){ response.send("OK");});
+    route("/page0").process(
+            [](const Request&, Response& response)
+            {
+                response.send("Default page");
+            });
+    route(whaleroute::rx{R"(/page\d*)"})
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.send("Some page");
+                    });
+    route("/upload").process(
+            [](const Request&, Response& response)
+            {
+                response.send("OK");
+            });
     route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}).process<ChapterNamePageIndexProcessor>();
     route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
     route(whaleroute::rx{R"(/chapter_(.+)/)"}).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(whaleroute::rx{R"(/files/(.*\.xml))"}).process(
-            [](const std::string& fileName, const Request&, Response& response) {
-                auto fileContent = std::string{"XML file: " + fileName};
-                response.send(fileContent);
-            });
+    route(whaleroute::rx{R"(/files/(.*\.xml))"})
+            .process(
+                    [](const std::string& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"XML file: " + fileName};
+                        response.send(fileContent);
+                    });
     route().set("404");
 
     processRequest("/");
@@ -161,51 +178,70 @@ TEST_F(RouterWithoutRouteSpecifiers, Matching)
 
 TEST_F(RouterWithoutRouteSpecifiers, DefaultUnmatchedRequestHandler)
 {
-     route("/").set("Hello world");
-     processRequest("/foo");
-     checkResponse("NO_MATCH");
+    route("/").set("Hello world");
+    processRequest("/foo");
+    checkResponse("NO_MATCH");
 }
 
 TEST_F(RouterWithoutRouteSpecifiers, MultipleRoutesMatching)
 {
-    route(whaleroute::rx{"/greet/.*"}).process([](const Request&, Response& response) {
-        response.state->data = "Hello";
-    });
-    route("/greet/world").process([](const Request& request, Response& response) {
-        response.state->data += " world" + (request.name.empty() ? std::string{} : " " + request.name);
-        response.state->wasSent = true;
-    });
+    route(whaleroute::rx{"/greet/.*"})
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.state->data = "Hello";
+                    });
+    route("/greet/world")
+            .process(
+                    [](const Request& request, Response& response)
+                    {
+                        response.state->data += " world" + (request.name.empty() ? std::string{} : " " + request.name);
+                        response.state->wasSent = true;
+                    });
     auto testState = std::string{};
-    route(whaleroute::rx{"/thank/.*"}).process([](const Request&, Response& response) {
-                                                         response.state->data = "Thanks";});
-    route("/thank/world").process([](const Request&, Response& response) { //Chained processors
-                                                response.state->data += " world";
-                                                response.state->wasSent = true;})
-                                           .process([&testState](const Request&, Response&) { //should be invoked even when processing is finished by sending the response
-                                                testState = "TEST";});
+    route(whaleroute::rx{"/thank/.*"})
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.state->data = "Thanks";
+                    });
+    route("/thank/world")
+            .process(
+                    [](const Request&, Response& response) { // Chained processors
+                        response.state->data += " world";
+                        response.state->wasSent = true;
+                    })
+            .process([&testState](
+                             const Request&,
+                             Response&) { // should be invoked even when processing is finished by sending the response
+                testState = "TEST";
+            });
 
     route("/").set("Hello Bill");
     route().set("404");
 
-    processRequest("/greet/world", RequestType::GET, "Request#1"); //Sending request with name, to test that the same request object is used in both processors
+    processRequest(
+            "/greet/world",
+            RequestType::GET,
+            "Request#1"); // Sending request with name, to test that the same request object is used in both processors
     checkResponse("Hello world Request#1");
     processRequest("/greet/moon");
     checkResponse("404");
     processRequest("/thank/world");
     checkResponse("Thanks world");
-    EXPECT_EQ(testState, "TEST"); //Ensures that chained processor was called after response had been sent
+    EXPECT_EQ(testState, "TEST"); // Ensures that chained processor was called after response had been sent
     processRequest("/thank/moon");
     checkResponse("404");
     processRequest("/");
     checkResponse("Hello Bill");
 }
 
-class CounterRouteProcessor
-{
+class CounterRouteProcessor {
 public:
     CounterRouteProcessor(int& state)
         : state_(state)
-    {}
+    {
+    }
 
     void operator()(const Request&, Response& response)
     {
@@ -218,7 +254,8 @@ private:
     int& state_;
 };
 
-TEST_F(RouterWithoutRouteSpecifiers, SameProcessorObjectUsedInMultipleRoutes){
+TEST_F(RouterWithoutRouteSpecifiers, SameProcessorObjectUsedInMultipleRoutes)
+{
     int state = 0;
     auto counterProcessor = CounterRouteProcessor{state};
     route("/test").process(counterProcessor);
@@ -228,10 +265,11 @@ TEST_F(RouterWithoutRouteSpecifiers, SameProcessorObjectUsedInMultipleRoutes){
     checkResponse("TEST");
     processRequest("/test2");
     checkResponse("TEST");
-    ASSERT_EQ(state, 2); //Which means that routes contain the same processor object
+    ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, SameProcessorTypeCreatedInMultipleRoutes){
+TEST_F(RouterWithoutRouteSpecifiers, SameProcessorTypeCreatedInMultipleRoutes)
+{
     int state = 0;
     route("/test").process<CounterRouteProcessor>(state);
     route("/test2").process<CounterRouteProcessor>(state);
@@ -240,15 +278,15 @@ TEST_F(RouterWithoutRouteSpecifiers, SameProcessorTypeCreatedInMultipleRoutes){
     checkResponse("TEST");
     processRequest("/test2");
     checkResponse("TEST");
-    ASSERT_EQ(state, 1); //Which means that routes contain different processor objects
+    ASSERT_EQ(state, 1); // Which means that routes contain different processor objects
 }
 
-class ParametrizedCounterRouteProcessor
-{
+class ParametrizedCounterRouteProcessor {
 public:
     ParametrizedCounterRouteProcessor(int& state)
         : state_(state)
-    {}
+    {
+    }
 
     void operator()(const std::string& param, const Request&, Response& response)
     {
@@ -261,7 +299,8 @@ private:
     int& state_;
 };
 
-TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorObjectUsedInMultipleRoutes){
+TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorObjectUsedInMultipleRoutes)
+{
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
     route(whaleroute::rx{"/test/(.+)"}).process(counterProcessor);
@@ -271,10 +310,11 @@ TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorObjectUsedInMultip
     checkResponse("TEST foo");
     processRequest("/test2/bar");
     checkResponse("TEST bar");
-    ASSERT_EQ(state, 2); //Which means that routes contain the same processor object
+    ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorTypeCreatedInMultipleRoutes){
+TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
+{
     int state = 0;
     route(whaleroute::rx{"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
     route(whaleroute::rx{"/test2/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
@@ -283,8 +323,7 @@ TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorTypeCreatedInMulti
     checkResponse("TEST foo");
     processRequest("/test2/bar");
     checkResponse("TEST bar");
-    ASSERT_EQ(state, 1); //Which means that routes contain different processor objects
+    ASSERT_EQ(state, 1); // Which means that routes contain different processor objects
 }
 
-
-}
+} // namespace without_route_specifiers

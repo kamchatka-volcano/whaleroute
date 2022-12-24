@@ -4,7 +4,7 @@
 #include <algorithm>
 
 namespace whaleroute::config {
-template<typename TRequest, typename TResponse>
+template <typename TRequest, typename TResponse>
 struct RouteSpecification<RequestType, TRequest, TResponse> {
     bool operator()(RequestType value, const TRequest& request, TResponse&) const
     {
@@ -12,7 +12,7 @@ struct RouteSpecification<RequestType, TRequest, TResponse> {
     }
 };
 
-template<typename TRequest, typename TResponse>
+template <typename TRequest, typename TResponse>
 struct RouteSpecification<std::string, TRequest, TResponse> {
     bool operator()(const std::string& value, const TRequest& request, TResponse& response) const
     {
@@ -20,7 +20,7 @@ struct RouteSpecification<std::string, TRequest, TResponse> {
     }
 };
 
-}
+} // namespace whaleroute::config
 
 namespace multiple_route_specifiers {
 
@@ -89,9 +89,12 @@ TEST_F(MultipleRouteSpecifiers, Default)
 TEST_F(MultipleRouteSpecifiers, ContextMatchingSpecifier)
 {
     route("/", RequestType::GET).set("Hello world");
-    route(whaleroute::rx{".+"}).process([](const Request&, Response& response){
-        response.state->context = "Sender";
-    });
+    route(whaleroute::rx{".+"})
+            .process(
+                    [](const Request&, Response& response)
+                    {
+                        response.state->context = "Sender";
+                    });
     route("/moon", RequestType::GET, "Sender"s).set("Hello moon from sender");
     route().set("404");
 
@@ -99,4 +102,4 @@ TEST_F(MultipleRouteSpecifiers, ContextMatchingSpecifier)
     checkResponse("Hello moon from sender");
 }
 
-}
+} // namespace multiple_route_specifiers
