@@ -1,15 +1,16 @@
 #ifndef WHALEROUTE_REQUESTPROCESSORQUEUE_H
 #define WHALEROUTE_REQUESTPROCESSORQUEUE_H
 
+#include <whaleroute/irequestprocessorqueue.h>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <vector>
 
-namespace whaleroute {
+namespace whaleroute::detail {
 
 template <typename TRouteContext>
-class RequestProcessorQueue {
+class RequestProcessorQueue : public IRequestProcessorQueue {
 public:
     explicit RequestProcessorQueue(std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers)
         : requestProcessorInvokers_{std::move(requestProcessorInvokers)}
@@ -18,7 +19,7 @@ public:
     }
     RequestProcessorQueue() = default;
 
-    void launch()
+    void launch() override
     {
         isStopped_ = false;
         for (; currentIndex_ < requestProcessorInvokers_.size(); ++currentIndex_) {
@@ -32,7 +33,7 @@ public:
         }
     }
 
-    void stop()
+    void stop() override
     {
         isStopped_ = true;
     }

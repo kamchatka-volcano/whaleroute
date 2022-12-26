@@ -1,11 +1,11 @@
 #ifndef WHALEROUTE_REQUESTROUTER_H
 #define WHALEROUTE_REQUESTROUTER_H
 
-#include "requestprocessorqueue.h"
 #include "types.h"
 #include "detail/irequestrouter.h"
 #include "detail/route.h"
 #include "detail/utils.h"
+#include "whaleroute/detail/requestprocessorqueue.h"
 #include <deque>
 #include <regex>
 #include <variant>
@@ -74,10 +74,10 @@ public:
     void process(const TRequest& request, TResponse& response)
     {
         auto queue = makeRequestProcessorQueue(request, response);
-        queue.launch();
+        queue->launch();
     }
 
-    RequestProcessorQueue<TRouteContext> makeRequestProcessorQueue(const TRequest& request, TResponse& response)
+    std::unique_ptr<IRequestProcessorQueue> makeRequestProcessorQueue(const TRequest& request, TResponse& response)
     {
         auto requestProcessorInvokerList = makeRouteRequestProcessorInvokerList(request, response);
         for (const auto& processor : noMatchRoute_.getRequestProcessors())
@@ -96,7 +96,7 @@ public:
                         return false;
                     });
 
-        return RequestProcessorQueue{requestProcessorInvokerList};
+        return std::make_unique<detail::RequestProcessorQueue<TRouteContext>>(requestProcessorInvokerList);
     }
 
 private:
