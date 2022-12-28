@@ -2,6 +2,8 @@
 #define WHALEROUTE_REQUESTPROCESSOR_H
 
 #include "utils.h"
+#include "external/sfun/functional.h"
+#include "external/sfun/type_traits.h"
 #include <variant>
 
 namespace whaleroute::detail {
@@ -9,36 +11,31 @@ namespace whaleroute::detail {
 template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 constexpr void checkRequestProcessorSignature()
 {
-    using args = callable_args<TRequestProcessor>;
-    constexpr auto argsSize = std::tuple_size_v<args>;
-    static_assert(argsSize >= 2);
+    constexpr auto args = sfun::callable_args<TRequestProcessor>{};
+    static_assert(args.size() >= 2);
     if constexpr (std::is_same_v<TRouteContext, _>) {
-        static_assert(std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
-        static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+        static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+        static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
     }
     else {
-        if constexpr (argsSize == 2) {
-            static_assert(
-                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
-            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+        if constexpr (args.size() == 2) {
+            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
         }
-        else if constexpr (std::is_same_v<
-                                   TRouteContext&,
-                                   typename decltype(typeListElement<argsSize - 1, args>())::type>) {
-            static_assert(
-                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 3, args>())::type>);
-            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
+        else if constexpr (std::is_same_v<TRouteContext&, typename decltype(sfun::get<args.size() - 1>(args))::type>) {
+            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 3>(args))::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
         }
         else {
-            static_assert(
-                    std::is_same_v<const TRequest&, typename decltype(typeListElement<argsSize - 2, args>())::type>);
-            static_assert(std::is_same_v<TResponse&, typename decltype(typeListElement<argsSize - 1, args>())::type>);
+            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+            static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
         }
     }
 }
 
-template <typename TArgsTypeList, int paramsSize>
-using requestProcessorArgsRouteParams = decay_tuple<type_list_elements_tuple<TArgsTypeList, paramsSize>>;
+template <typename TArgsTypeList, std::size_t paramsSize>
+using requestProcessorArgsRouteParams =
+        sfun::decay_tuple_t<sfun::to_tuple_t<decltype(TArgsTypeList::template slice<0, paramsSize>())>>;
 
 template <typename TParamsTuple>
 auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TParamsTuple, RouteParameterError>
@@ -108,26 +105,25 @@ void invokeRequestProcessor(
 {
     checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse, TRouteContext>();
 
-    using argsTypeList = callable_args<TRequestProcessor>;
-    constexpr auto argsSize = std::tuple_size_v<argsTypeList>;
-    constexpr auto paramsSize = []
+    constexpr auto args = sfun::callable_args<TRequestProcessor>{};
+    constexpr auto paramsSize = [args]
     {
         if constexpr (
-                argsSize > 2 &&
-                std::is_same_v<typename decltype(typeListElement<argsSize - 1, argsTypeList>())::type, TRouteContext&>)
-            return argsSize - 3;
+                args.size() > 2 &&
+                std::is_same_v<typename decltype(sfun::get<args.size() - 1>(args))::type, TRouteContext&>)
+            return args.size() - 3;
         else
-            return argsSize - 2;
+            return args.size() - 2;
     }();
     if constexpr (!paramsSize) {
-        if constexpr (argsSize == 2)
+        if constexpr (args.size() == 2)
             requestProcessor(request, response);
         else
             requestProcessor(request, response, routeContext);
     }
     else {
-        auto paramsResult = readRouteParams<argsTypeList, paramsSize>(routeParams);
-        auto paramsResultVisitor = overloaded{
+        auto paramsResult = readRouteParams<decltype(args), paramsSize>(routeParams);
+        auto paramsResultVisitor = sfun::overloaded{
                 [&](const RouteParameterError& error)
                 {
                     if (routeParamErrorHandler)
@@ -137,7 +133,7 @@ void invokeRequestProcessor(
                 {
                     auto callProcess = [&](const auto&... param)
                     {
-                        if constexpr (argsSize - paramsSize == 2)
+                        if constexpr (args.size() - paramsSize == 2)
                             requestProcessor(param..., request, response);
                         else
                             requestProcessor(param..., request, response, routeContext);

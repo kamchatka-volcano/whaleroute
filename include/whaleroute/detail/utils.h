@@ -13,8 +13,6 @@
 
 namespace whaleroute::detail {
 
-namespace str = sfun::string_utils;
-
 template <typename TDst, typename TSrc>
 void concat(TDst& dst, const TSrc& src)
 {
@@ -44,9 +42,9 @@ inline std::string regexValue(const rx& regExp, RegexMode regexMode)
         return regExp.value;
 
     const auto rxVal = regExp.value;
-    const auto startsWithTilda = str::startsWith(rxVal, "~~");
-    const auto endsWithTilda = str::endsWith(rxVal, "~~");
-    const auto splitRes = str::split(rxVal, "~~", false);
+    const auto startsWithTilda = sfun::startsWith(rxVal, "~~");
+    const auto endsWithTilda = sfun::endsWith(rxVal, "~~");
+    const auto splitRes = sfun::split(rxVal, "~~", false);
     const auto rxValParts = [&splitRes]
     {
         auto res = std::vector<std::string>{};
@@ -56,11 +54,11 @@ inline std::string regexValue(const rx& regExp, RegexMode regexMode)
                 std::back_inserter(res),
                 [](const auto& rxValPartView)
                 {
-                    return str::replace(std::string{rxValPartView}, "~", "\\");
+                    return sfun::replace(std::string{rxValPartView}, "~", "\\");
                 });
         return res;
     }();
-    return (startsWithTilda ? "~" : "") + str::join(rxValParts, "~") + (endsWithTilda ? "~" : "");
+    return (startsWithTilda ? "~" : "") + sfun::join(rxValParts, "~") + (endsWithTilda ? "~" : "");
 }
 
 inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlashMode mode)
@@ -70,11 +68,11 @@ inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlash
 
     auto rxVal = regexValue(regExp, regexMode);
     if (mode == TrailingSlashMode::Optional) {
-        if (str::endsWith(rxVal, "/")) {
+        if (sfun::endsWith(rxVal, "/")) {
             rxVal.pop_back();
             return std::regex{rxVal};
         }
-        else if (str::endsWith(rxVal, "/)")) {
+        else if (sfun::endsWith(rxVal, "/)")) {
             rxVal[rxVal.size() - 1] = '?';
             rxVal += ')';
             return std::regex{rxVal};
@@ -82,62 +80,6 @@ inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlash
     }
     return std::regex{rxVal};
 }
-
-template <typename T>
-struct type_wrapper {
-    using type = T;
-};
-template <typename TWrapper>
-using unwrap_type = typename TWrapper::type;
-
-template <typename... T>
-using type_list = std::tuple<type_wrapper<T>...>;
-
-template <std::size_t index, typename TList>
-using type_list_element = unwrap_type<std::remove_reference_t<decltype(std::get<index>(TList{}))>>;
-
-template <typename TList>
-constexpr auto type_list_size = std::tuple_size_v<TList>;
-
-template <std::size_t index, typename TList>
-constexpr auto typeListElement()
-{
-    auto list = TList{};
-    return type_wrapper<unwrap_type<std::remove_reference_t<decltype(std::get<index>(list))>>>{};
-}
-template <typename TList, std::size_t... I>
-constexpr auto makeTypeListElementsTuple(std::index_sequence<I...>) -> std::tuple<type_list_element<I, TList>...>;
-
-template <typename TList, std::size_t Size = std::tuple_size_v<TList>>
-using type_list_elements_tuple = decltype(makeTypeListElementsTuple<TList>(std::make_index_sequence<Size>()));
-
-template <typename... T>
-constexpr auto makeDecayTuple(std::tuple<T...> const&) -> std::tuple<std::decay_t<T>...>;
-
-template <typename T>
-using decay_tuple = decltype(makeDecayTuple(std::declval<T>()));
-
-template <typename T>
-struct callable_signature;
-
-template <typename R, typename... Args>
-struct callable_signature<std::function<R(Args...)>> {
-    using return_type = R;
-    using args = type_list<Args...>;
-};
-
-template <typename TCallable>
-using callable_args = typename callable_signature<decltype(std::function{std::declval<TCallable>()})>::args;
-
-template <class... Ts>
-struct overloaded : Ts... {
-    using Ts::operator()...;
-};
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
-template <typename T>
-inline constexpr auto dependent_false = false;
 
 } // namespace whaleroute::detail
 

@@ -2,10 +2,11 @@
 #define WHALEROUTE_REQUESTROUTER_H
 
 #include "types.h"
+#include "detail/external/sfun/functional.h"
 #include "detail/irequestrouter.h"
+#include "detail/requestprocessorqueue.h"
 #include "detail/route.h"
 #include "detail/utils.h"
-#include "whaleroute/detail/requestprocessorqueue.h"
 #include <deque>
 #include <regex>
 #include <variant>
@@ -118,7 +119,7 @@ private:
             TResponse& response)
     {
         auto result = std::vector<std::function<bool(TRouteContext&)>>{};
-        const auto matchVisitor = detail::overloaded{
+        const auto matchVisitor = sfun::overloaded{
                 [&](const RegExpRouteMatch& match)
                 {
                     auto matchList = std::smatch{};

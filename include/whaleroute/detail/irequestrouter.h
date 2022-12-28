@@ -1,15 +1,15 @@
 #ifndef WHALEROUTE_IREQUESTROUTER_H
 #define WHALEROUTE_IREQUESTROUTER_H
 
+#include "external/sfun/interface.h"
 #include <whaleroute/types.h>
 
 namespace whaleroute::detail {
 
 template <typename TResponse, typename TResponseValue>
-class IRequestRouterWithResponseValue {
+class IRequestRouterWithResponseValue
+    : private sfun::Interface<IRequestRouterWithResponseValue<TResponse, TResponseValue>> {
 public:
-    virtual ~IRequestRouterWithResponseValue() = default;
-
     virtual void setResponseValue(TResponse&, const TResponseValue&) = 0;
 };
 
@@ -23,9 +23,9 @@ using MaybeWithResponseValue = std::conditional_t<
         Without<IRequestRouterWithResponseValue<TResponse, TResponseValue>>>;
 
 template <typename TRequest, typename TResponse, typename TResponseValue>
-class IRequestRouter : public MaybeWithResponseValue<TResponse, TResponseValue> {
+class IRequestRouter : public MaybeWithResponseValue<TResponse, TResponseValue>,
+                       private sfun::Interface<IRequestRouter<TRequest, TResponse, TResponseValue>> {
 public:
-    virtual ~IRequestRouter() = default;
     virtual std::string getRequestPath(const TRequest&) = 0;
     virtual void processUnmatchedRequest(const TRequest&, TResponse&) = 0;
     virtual void onRouteParametersError(const TRequest&, TResponse&, const RouteParameterError&){};

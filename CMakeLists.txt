@@ -6,13 +6,13 @@ include(external/seal_lake)
 SealLake_Bundle(
         NAME whaleroute_sfun
         GIT_REPOSITORY https://github.com/kamchatka-volcano/sfun.git
-        GIT_TAG        v2.4.0
+        GIT_TAG v3
         DIRECTORIES
-            include/sfun
+        include/sfun
         DESTINATION include/whaleroute/detail/external
         TEXT_REPLACEMENTS
-            "namespace sfun" "namespace whaleroute::sfun"
-            "SFUN_" "WHALEROUTE_SFUN_"
+        "namespace sfun" "namespace whaleroute::sfun"
+        "SFUN_" "WHALEROUTE_SFUN_"
 )
 
 SealLake_HeaderOnlyLibrary(
