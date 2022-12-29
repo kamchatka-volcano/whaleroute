@@ -94,6 +94,19 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
         return makeParams<ParamsTuple>(routeParams);
 }
 
+template <typename TArgs, typename TRouteContext>
+struct ParamsSize {
+    static constexpr auto value()
+    {
+        constexpr auto args = TArgs{};
+        using LastArg = typename decltype(sfun::get<TArgs::size() - 1>(args))::type;
+        if constexpr (args.size() > 2 && std::is_same_v<LastArg, TRouteContext&>)
+            return args.size() - 3;
+        else
+            return args.size() - 2;
+    };
+};
+
 template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 void invokeRequestProcessor(
         TRequestProcessor& requestProcessor,
@@ -106,23 +119,15 @@ void invokeRequestProcessor(
     checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse, TRouteContext>();
 
     constexpr auto args = sfun::callable_args<TRequestProcessor>{};
-    constexpr auto paramsSize = [args]
-    {
-        if constexpr (
-                args.size() > 2 &&
-                std::is_same_v<typename decltype(sfun::get<args.size() - 1>(args))::type, TRouteContext&>)
-            return args.size() - 3;
-        else
-            return args.size() - 2;
-    }();
-    if constexpr (!paramsSize) {
+    constexpr auto paramsSize = ParamsSize<decltype(args), TRouteContext>{};
+    if constexpr (!paramsSize.value()) {
         if constexpr (args.size() == 2)
             requestProcessor(request, response);
         else
             requestProcessor(request, response, routeContext);
     }
     else {
-        auto paramsResult = readRouteParams<decltype(args), paramsSize>(routeParams);
+        auto paramsResult = readRouteParams<decltype(args), paramsSize.value()>(routeParams);
         auto paramsResultVisitor = sfun::overloaded{
                 [&](const RouteParameterError& error)
                 {
@@ -133,7 +138,7 @@ void invokeRequestProcessor(
                 {
                     auto callProcess = [&](const auto&... param)
                     {
-                        if constexpr (args.size() - paramsSize == 2)
+                        if constexpr (args.size() - paramsSize.value() == 2)
                             requestProcessor(param..., request, response);
                         else
                             requestProcessor(param..., request, response, routeContext);
