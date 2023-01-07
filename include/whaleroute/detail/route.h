@@ -77,44 +77,42 @@ public:
     }
 
     template <typename TProcessor>
-    Route& process(TProcessor& requestProcessor)
-    {
-        processorList_.emplace_back(
-                [&requestProcessor, this]( //
-                        const TRequest& request,
-                        TResponse& response,
-                        const std::vector<std::string>& routeParams,
-                        TRouteContext& routeContext)
-                {
-                    invokeRequestProcessor(
-                            requestProcessor,
-                            request,
-                            response,
-                            routeParams,
-                            routeContext,
-                            routeParameterErrorHandler_);
-                });
-        return *this;
-    }
-
-    template <typename TProcessor>
     Route& process(TProcessor&& requestProcessor)
     {
-        processorList_.emplace_back(
-                [requestProcessor = std::forward<TProcessor>(requestProcessor), this]( //
-                        const TRequest& request,
-                        TResponse& response,
-                        const std::vector<std::string>& routeParams,
-                        TRouteContext& routeContext)
-                {
-                    invokeRequestProcessor(
-                            requestProcessor,
-                            request,
-                            response,
-                            routeParams,
-                            routeContext,
-                            routeParameterErrorHandler_);
-                });
+        if constexpr (std::is_lvalue_reference_v<TProcessor>) {
+            processorList_.emplace_back(
+                    [&requestProcessor, this]( //
+                            const TRequest& request,
+                            TResponse& response,
+                            const std::vector<std::string>& routeParams,
+                            TRouteContext& routeContext)
+                    {
+                        invokeRequestProcessor(
+                                requestProcessor,
+                                request,
+                                response,
+                                routeParams,
+                                routeContext,
+                                routeParameterErrorHandler_);
+                    });
+        }
+        else {
+            processorList_.emplace_back(
+                    [requestProcessor = std::move(requestProcessor), this]( //
+                            const TRequest& request,
+                            TResponse& response,
+                            const std::vector<std::string>& routeParams,
+                            TRouteContext& routeContext)
+                    {
+                        invokeRequestProcessor(
+                                requestProcessor,
+                                request,
+                                response,
+                                routeParams,
+                                routeContext,
+                                routeParameterErrorHandler_);
+                    });
+        }
         return *this;
     }
 

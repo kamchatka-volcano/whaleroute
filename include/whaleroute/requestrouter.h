@@ -14,7 +14,7 @@
 namespace whaleroute {
 
 template <typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
-class RequestRouter : public detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
+class RequestRouter : private detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
     using TRoute = detail::Route<TRequest, TResponse, TResponseValue, TRouteContext>;
     using RequestProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
@@ -114,44 +114,42 @@ private:
         };
     }
 
+    auto makeRegexMatchProcessor(const TRequest& request, TResponse& response)
+    {
+        return [&](const RegExpRouteMatch& match) -> std::vector<std::function<bool(TRouteContext&)>>
+        {
+            auto matchList = std::smatch{};
+            const auto requestPath = detail::makePath(this->getRequestPath(request), trailingSlashMode_);
+            if (!std::regex_match(requestPath, matchList, match.regExp))
+                return {};
+
+            auto routeParams = std::vector<std::string>{};
+            for (auto i = 1u; i < matchList.size(); ++i)
+                routeParams.push_back(matchList[i].str());
+            return makeRequestProcessorInvokerList(match.route.getRequestProcessors(), request, response, routeParams);
+        };
+    }
+
+    auto makePathMatchProcessor(const TRequest& request, TResponse& response)
+    {
+        return [&](const PathRouteMatch& match) -> std::vector<std::function<bool(TRouteContext&)>>
+        {
+            if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
+                return makeRequestProcessorInvokerList(match.route.getRequestProcessors(), request, response, {});
+            else
+                return {};
+        };
+    }
+
     std::vector<std::function<bool(TRouteContext&)>> makeRouteRequestProcessorInvokerList(
             const TRequest& request,
             TResponse& response)
     {
         auto result = std::vector<std::function<bool(TRouteContext&)>>{};
-        const auto matchVisitor = sfun::overloaded{
-                [&](const RegExpRouteMatch& match)
-                {
-                    auto matchList = std::smatch{};
-                    const auto requestPath = detail::makePath(this->getRequestPath(request), trailingSlashMode_);
-                    if (std::regex_match(requestPath, matchList, match.regExp)) {
-                        auto routeParams = std::vector<std::string>{};
-                        for (auto i = 1u; i < matchList.size(); ++i)
-                            routeParams.push_back(matchList[i].str());
-
-                        detail::concat(
-                                result,
-                                makeRequestProcessorInvokerList(
-                                        match.route.getRequestProcessors(),
-                                        request,
-                                        response,
-                                        routeParams));
-                    }
-                },
-                [&](const PathRouteMatch& match)
-                {
-                    if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
-                        detail::concat(
-                                result,
-                                makeRequestProcessorInvokerList(
-                                        match.route.getRequestProcessors(),
-                                        request,
-                                        response,
-                                        {}));
-                }};
-
+        const auto matchVisitor =
+                sfun::overloaded{makeRegexMatchProcessor(request, response), makePathMatchProcessor(request, response)};
         for (auto& match : routeMatchList_)
-            std::visit(matchVisitor, match);
+            detail::concat(result, std::visit(matchVisitor, match));
 
         return result;
     }
