@@ -3,13 +3,13 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-namespace response_value_arguments {
+namespace {
 class ResponseValueFromArgs;
 }
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<response_value_arguments::ResponseValueFromArgs, RequestType> {
+struct RouteMatcher<ResponseValueFromArgs, RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -17,7 +17,7 @@ struct RouteSpecification<response_value_arguments::ResponseValueFromArgs, Reque
 };
 } // namespace whaleroute::config
 
-namespace response_value_arguments {
+namespace {
 
 class TestString {
 public:
@@ -88,6 +88,8 @@ protected:
     std::string responseData_;
 };
 
+} // namespace
+
 TEST_F(ResponseValueFromArgs, Default)
 {
     route("/", RequestType::GET).set("Hello world");
@@ -99,5 +101,3 @@ TEST_F(ResponseValueFromArgs, Default)
     processRequest(RequestType::GET, "/foo");
     checkResponse("NOT FOUND");
 }
-
-} // namespace response_value_arguments

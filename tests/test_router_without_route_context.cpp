@@ -13,7 +13,7 @@ class RouterWithoutRouteContext;
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<RouterWithoutRouteContext, RequestType> {
+struct RouteMatcher<RouterWithoutRouteContext, RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;

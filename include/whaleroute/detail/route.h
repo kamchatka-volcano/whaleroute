@@ -3,7 +3,7 @@
 
 #include "irequestrouter.h"
 #include "requestprocessor.h"
-#include "routespecifier.h"
+#include "routematcherinvoker.h"
 #include "utils.h"
 #include "external/sfun/interface.h"
 #include <whaleroute/types.h>
@@ -27,10 +27,10 @@ class Route {
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
-          std::vector<RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifiers,
+          std::vector<RouteMatcherInvoker<TRouter, TRequest, TResponse, TRouteContext>> routeMatchers,
           std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
         : router_{router}
-        , routeSpecifiers_{std::move(routeSpecifiers)}
+        , routeMatchers_{std::move(routeMatchers)}
         , routeParameterErrorHandler_{std::move(routeParameterErrorHandler)}
     {
     }
@@ -137,7 +137,7 @@ public:
 
     std::vector<ProcessorFunc> getRequestProcessors(sfun::AccessPermission<Router>) const
     {
-        auto toFilteredProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc
+        auto toMatchedProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc
         {
             return [this, &processor](
                            const TRequest& request,
@@ -146,11 +146,11 @@ public:
                            TRouteContext& routeContext)
             {
                 if (!std::all_of(
-                            routeSpecifiers_.begin(),
-                            routeSpecifiers_.end(),
-                            [&request, &response, &routeContext](auto& routeSpecifier) -> bool
+                            routeMatchers_.begin(),
+                            routeMatchers_.end(),
+                            [&request, &response, &routeContext](auto& routeMatcher) -> bool
                             {
-                                return routeSpecifier(request, response, routeContext);
+                                return routeMatcher(request, response, routeContext);
                             }))
                     return;
                 processor(request, response, routeParams, routeContext);
@@ -162,14 +162,14 @@ public:
                 processorList_.begin(),
                 processorList_.end(),
                 std::back_inserter(result),
-                toFilteredProcessorFunc);
+                toMatchedProcessorFunc);
         return result;
     }
 
 private:
     std::vector<ProcessorFunc> processorList_;
     IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
-    std::vector<RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifiers_;
+    std::vector<RouteMatcherInvoker<TRouter, TRequest, TResponse, TRouteContext>> routeMatchers_;
     std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };
 

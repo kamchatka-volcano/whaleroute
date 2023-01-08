@@ -51,10 +51,10 @@ public:
         regexMode_ = mode;
     }
 
-    template <typename... TRouteSpecificationArgs>
-    Route& route(const std::string& path, TRouteSpecificationArgs&&... spec)
+    template <typename... TRouteMatcherArgs>
+    Route& route(const std::string& path, TRouteMatcherArgs&&... matcherArgs)
     {
-        return pathRouteImpl(path, {std::forward<TRouteSpecificationArgs>(spec)...});
+        return pathRouteImpl(path, {std::forward<TRouteMatcherArgs>(matcherArgs)...});
     }
 
     Route& route(const std::string& path)
@@ -62,10 +62,10 @@ public:
         return pathRouteImpl(path, {});
     }
 
-    template <typename... TRouteSpecificationArgs>
-    Route& route(const rx& regExp, TRouteSpecificationArgs&&... spec)
+    template <typename... TRouteMatcherArgs>
+    Route& route(const rx& regExp, TRouteMatcherArgs&&... matcherArgs)
     {
-        return regexRouteImpl(regExp, {std::forward<TRouteSpecificationArgs>(spec)...});
+        return regexRouteImpl(regExp, {std::forward<TRouteMatcherArgs>(matcherArgs)...});
     }
 
     Route& route(const rx& regExp)
@@ -193,21 +193,21 @@ private:
 
     Route& pathRouteImpl(
             const std::string& path,
-            std::vector<detail::RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifications = {})
+            std::vector<detail::RouteMatcherInvoker<TRouter, TRequest, TResponse, TRouteContext>> routeMatchers = {})
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(
-                PathRouteMatch{routePath, Route{*this, routeSpecifications, routeParametersErrorHandler()}});
+                PathRouteMatch{routePath, Route{*this, routeMatchers, routeParametersErrorHandler()}});
         return std::get<PathRouteMatch>(routeMatch).route;
     }
 
     Route& regexRouteImpl(
             const rx& regExp,
-            std::vector<detail::RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifications = {})
+            std::vector<detail::RouteMatcherInvoker<TRouter, TRequest, TResponse, TRouteContext>> routeMatchers = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
                 detail::makeRegex(regExp, regexMode_, trailingSlashMode_),
-                {*this, std::move(routeSpecifications), routeParametersErrorHandler()}});
+                {*this, std::move(routeMatchers), routeParametersErrorHandler()}});
         return std::get<RegExpRouteMatch>(routeMatch).route;
     }
 

@@ -16,10 +16,10 @@ struct StringConverter<ChapterString> {
 };
 } // namespace whaleroute::config
 
-namespace without_route_specifiers {
-class RouterWithoutRouteSpecifiers
+namespace {
+class RouterWithoutRouteMatchers
     : public ::testing::Test,
-      public whaleroute::RequestRouter<RouterWithoutRouteSpecifiers, Request, Response, std::string> {
+      public whaleroute::RequestRouter<RouterWithoutRouteMatchers, Request, Response, std::string> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {
@@ -106,7 +106,9 @@ struct ChapterNameProcessor {
     }
 };
 
-TEST_F(RouterWithoutRouteSpecifiers, Matching)
+} // namespace
+
+TEST_F(RouterWithoutRouteMatchers, Matching)
 {
     route("/").process<GreeterPageProcessor>();
     route("/moon").process<GreeterPageProcessor>("Moon");
@@ -177,14 +179,14 @@ TEST_F(RouterWithoutRouteSpecifiers, Matching)
     checkResponse("404");
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, DefaultUnmatchedRequestHandler)
+TEST_F(RouterWithoutRouteMatchers, DefaultUnmatchedRequestHandler)
 {
     route("/").set("Hello world");
     processRequest("/foo");
     checkResponse("NO_MATCH");
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, MultipleRoutesMatching)
+TEST_F(RouterWithoutRouteMatchers, MultipleRoutesMatching)
 {
     route(whaleroute::rx{"/greet/.*"})
             .process(
@@ -255,7 +257,7 @@ private:
     int& state_;
 };
 
-TEST_F(RouterWithoutRouteSpecifiers, SameProcessorObjectUsedInMultipleRoutes)
+TEST_F(RouterWithoutRouteMatchers, SameProcessorObjectUsedInMultipleRoutes)
 {
     int state = 0;
     auto counterProcessor = CounterRouteProcessor{state};
@@ -269,7 +271,7 @@ TEST_F(RouterWithoutRouteSpecifiers, SameProcessorObjectUsedInMultipleRoutes)
     ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, SameProcessorTypeCreatedInMultipleRoutes)
+TEST_F(RouterWithoutRouteMatchers, SameProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
     route("/test").process<CounterRouteProcessor>(state);
@@ -300,7 +302,7 @@ private:
     int& state_;
 };
 
-TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorObjectUsedInMultipleRoutes)
+TEST_F(RouterWithoutRouteMatchers, SameParametrizedProcessorObjectUsedInMultipleRoutes)
 {
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
@@ -314,7 +316,7 @@ TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorObjectUsedInMultip
     ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
+TEST_F(RouterWithoutRouteMatchers, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
     route(whaleroute::rx{"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
@@ -326,5 +328,3 @@ TEST_F(RouterWithoutRouteSpecifiers, SameParametrizedProcessorTypeCreatedInMulti
     checkResponse("TEST bar");
     ASSERT_EQ(state, 1); // Which means that routes contain different processor objects
 }
-
-} // namespace without_route_specifiers

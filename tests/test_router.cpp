@@ -17,7 +17,7 @@ class Router;
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<Router, RequestType> {
+struct RouteMatcher<Router, RequestType> {
     bool operator()(const RequestType& value, const Request& request, Response&, Context&) const
     {
         return value == request.type;

@@ -6,13 +6,13 @@ struct ChapterString {
     std::string value;
 };
 
-namespace without_response_value {
+namespace {
 class RouterWithoutResponseValue;
 }
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<without_response_value::RouterWithoutResponseValue, RequestType> {
+struct RouteMatcher<RouterWithoutResponseValue, RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -29,7 +29,7 @@ struct StringConverter<ChapterString> {
 
 } // namespace whaleroute::config
 
-namespace without_response_value {
+namespace {
 class RouterWithoutResponseValue : public ::testing::Test,
                                    public whaleroute::RequestRouter<RouterWithoutResponseValue, Request, Response> {
 public:
@@ -112,6 +112,8 @@ struct ChapterNameProcessor {
         response.send("Chapter: " + chapterName.value);
     }
 };
+
+} // namespace
 
 TEST_F(RouterWithoutResponseValue, Matching)
 {
@@ -364,5 +366,3 @@ TEST_F(RouterWithoutResponseValue, SameParametrizedProcessorTypeCreatedInMultipl
     checkResponse("TEST bar");
     ASSERT_EQ(state, 1); // Which means that routes contain different processor objects
 }
-
-} // namespace without_response_value

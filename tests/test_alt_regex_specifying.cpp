@@ -7,13 +7,13 @@ struct ChapterString {
     std::string value;
 };
 
-namespace alt_regex_specifying {
+namespace {
 class AltRegexSpecifying;
 }
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<alt_regex_specifying::AltRegexSpecifying, RequestType> {
+struct RouteMatcher<AltRegexSpecifying, RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -29,7 +29,7 @@ struct StringConverter<ChapterString> {
 };
 } // namespace whaleroute::config
 
-namespace alt_regex_specifying {
+namespace {
 
 class AltRegexSpecifying : public ::testing::Test,
                            public whaleroute::RequestRouter<AltRegexSpecifying, Request, Response, std::string> {
@@ -118,6 +118,8 @@ struct ChapterNameProcessor {
         response.send("Chapter: " + chapterName.value);
     }
 };
+
+} // namespace
 
 TEST_F(AltRegexSpecifying, StringLiterals)
 {
@@ -381,5 +383,3 @@ TEST_F(AltRegexSpecifying, StringLiteralsAndTildaEscape)
     processRequest("/foo");
     checkResponse("404");
 }
-
-} // namespace alt_regex_specifying

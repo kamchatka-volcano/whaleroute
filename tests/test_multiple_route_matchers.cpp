@@ -3,13 +3,13 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-namespace multiple_route_specifiers {
-class MultipleRouteSpecifiers;
+namespace {
+class MultipleRouteMatchers;
 }
 
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<multiple_route_specifiers::MultipleRouteSpecifiers, RequestType> {
+struct RouteMatcher<MultipleRouteMatchers, RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -17,20 +17,18 @@ struct RouteSpecification<multiple_route_specifiers::MultipleRouteSpecifiers, Re
 };
 
 template <>
-struct RouteSpecification<multiple_route_specifiers::MultipleRouteSpecifiers, std::string> {
+struct RouteMatcher<MultipleRouteMatchers, std::string> {
     bool operator()(const std::string& value, const Request& request, Response& response) const
     {
         return value == request.name || value == response.state->context;
     }
 };
-
 } // namespace whaleroute::config
 
-namespace multiple_route_specifiers {
+namespace {
 
-class MultipleRouteSpecifiers
-    : public ::testing::Test,
-      public whaleroute::RequestRouter<MultipleRouteSpecifiers, Request, Response, std::string> {
+class MultipleRouteMatchers : public ::testing::Test,
+                              public whaleroute::RequestRouter<MultipleRouteMatchers, Request, Response, std::string> {
 public:
     void processRequest(const std::string& path, RequestType type, std::string name = {})
     {
@@ -69,10 +67,11 @@ protected:
 protected:
     std::string responseData_;
 };
+} // namespace
 
 using namespace std::string_literals;
 
-TEST_F(MultipleRouteSpecifiers, Default)
+TEST_F(MultipleRouteMatchers, Default)
 {
     route("/", RequestType::GET).set("Hello world");
     route("/moon", RequestType::GET, "Sender"s).set("Hello moon from sender");
@@ -91,7 +90,7 @@ TEST_F(MultipleRouteSpecifiers, Default)
     checkResponse("404");
 }
 
-TEST_F(MultipleRouteSpecifiers, ContextMatchingSpecifier)
+TEST_F(MultipleRouteMatchers, ContextMatching)
 {
     route("/", RequestType::GET).set("Hello world");
     route(whaleroute::rx{".+"})
@@ -106,5 +105,3 @@ TEST_F(MultipleRouteSpecifiers, ContextMatchingSpecifier)
     processRequest("/moon", RequestType::GET);
     checkResponse("Hello moon from sender");
 }
-
-} // namespace multiple_route_specifiers
