@@ -5,6 +5,7 @@
 #include "requestprocessor.h"
 #include "routespecifier.h"
 #include "utils.h"
+#include "external/sfun/interface.h"
 #include <whaleroute/types.h>
 #include <functional>
 #include <memory>
@@ -22,7 +23,7 @@ template <typename TRequest, typename TResponse, typename TResponseValue, typena
 class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
-    friend class RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
+    using Router = RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
@@ -134,8 +135,7 @@ public:
                 });
     }
 
-private:
-    std::vector<ProcessorFunc> getRequestProcessors() const
+    std::vector<ProcessorFunc> getRequestProcessors(sfun::AccessPermission<Router>) const
     {
         auto toFilteredProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc
         {

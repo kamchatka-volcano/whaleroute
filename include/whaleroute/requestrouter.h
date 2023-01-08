@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "detail/external/sfun/functional.h"
+#include "detail/external/sfun/interface.h"
 #include "detail/irequestrouter.h"
 #include "detail/requestprocessorqueue.h"
 #include "detail/route.h"
@@ -81,7 +82,7 @@ public:
     std::unique_ptr<IRequestProcessorQueue> makeRequestProcessorQueue(const TRequest& request, TResponse& response)
     {
         auto requestProcessorInvokerList = makeRouteRequestProcessorInvokerList(request, response);
-        for (const auto& processor : noMatchRoute_.getRequestProcessors())
+        for (const auto& processor : noMatchRoute_.getRequestProcessors(sfun::AccessToken{*this}))
             requestProcessorInvokerList.emplace_back(
                     [request, response, processor](TRouteContext& routeContext) mutable -> bool
                     {
@@ -126,7 +127,11 @@ private:
             auto routeParams = std::vector<std::string>{};
             for (auto i = 1u; i < matchList.size(); ++i)
                 routeParams.push_back(matchList[i].str());
-            return makeRequestProcessorInvokerList(match.route.getRequestProcessors(), request, response, routeParams);
+            return makeRequestProcessorInvokerList(
+                    match.route.getRequestProcessors(sfun::AccessToken{*this}),
+                    request,
+                    response,
+                    routeParams);
         };
     }
 
@@ -135,7 +140,11 @@ private:
         return [&](const PathRouteMatch& match) -> std::vector<std::function<bool(TRouteContext&)>>
         {
             if (match.path == detail::makePath(this->getRequestPath(request), trailingSlashMode_))
-                return makeRequestProcessorInvokerList(match.route.getRequestProcessors(), request, response, {});
+                return makeRequestProcessorInvokerList(
+                        match.route.getRequestProcessors(sfun::AccessToken{*this}),
+                        request,
+                        response,
+                        {});
             else
                 return {};
         };
