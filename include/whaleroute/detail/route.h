@@ -13,21 +13,21 @@
 #include <vector>
 
 namespace whaleroute {
-template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template <typename TRouter, typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class RequestRouter;
 }
 
 namespace whaleroute::detail {
 
-template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template <typename TRouter, typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
-    using Router = RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
+    using Router = RequestRouter<TRouter, TRequest, TResponse, TResponseValue, TRouteContext>;
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
-          std::vector<RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifiers,
+          std::vector<RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifiers,
           std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
         : router_{router}
         , routeSpecifiers_{std::move(routeSpecifiers)}
@@ -169,7 +169,7 @@ public:
 private:
     std::vector<ProcessorFunc> processorList_;
     IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
-    std::vector<RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifiers_;
+    std::vector<RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifiers_;
     std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };
 

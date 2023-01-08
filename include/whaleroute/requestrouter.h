@@ -14,19 +14,24 @@
 
 namespace whaleroute {
 
-template <typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
+template <
+        typename TRouter,
+        typename TRequest,
+        typename TResponse,
+        typename TResponseValue = _,
+        typename TRouteContext = _>
 class RequestRouter : private detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
-    using TRoute = detail::Route<TRequest, TResponse, TResponseValue, TRouteContext>;
+    using Route = detail::Route<TRouter, TRequest, TResponse, TResponseValue, TRouteContext>;
     using RequestProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
 
     struct RegExpRouteMatch {
         std::regex regExp;
-        TRoute route;
+        Route route;
     };
     struct PathRouteMatch {
         std::string path;
-        TRoute route;
+        Route route;
     };
     using RouteMatch = std::variant<RegExpRouteMatch, PathRouteMatch>;
 
@@ -47,28 +52,28 @@ public:
     }
 
     template <typename... TRouteSpecificationArgs>
-    TRoute& route(const std::string& path, TRouteSpecificationArgs&&... spec)
+    Route& route(const std::string& path, TRouteSpecificationArgs&&... spec)
     {
         return pathRouteImpl(path, {std::forward<TRouteSpecificationArgs>(spec)...});
     }
 
-    TRoute& route(const std::string& path)
+    Route& route(const std::string& path)
     {
         return pathRouteImpl(path, {});
     }
 
     template <typename... TRouteSpecificationArgs>
-    TRoute& route(const rx& regExp, TRouteSpecificationArgs&&... spec)
+    Route& route(const rx& regExp, TRouteSpecificationArgs&&... spec)
     {
         return regexRouteImpl(regExp, {std::forward<TRouteSpecificationArgs>(spec)...});
     }
 
-    TRoute& route(const rx& regExp)
+    Route& route(const rx& regExp)
     {
         return regexRouteImpl(regExp, {});
     }
 
-    TRoute& route()
+    Route& route()
     {
         return noMatchRoute_;
     }
@@ -186,19 +191,19 @@ private:
         return result;
     };
 
-    TRoute& pathRouteImpl(
+    Route& pathRouteImpl(
             const std::string& path,
-            std::vector<detail::RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifications = {})
+            std::vector<detail::RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifications = {})
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(
-                PathRouteMatch{routePath, TRoute{*this, routeSpecifications, routeParametersErrorHandler()}});
+                PathRouteMatch{routePath, Route{*this, routeSpecifications, routeParametersErrorHandler()}});
         return std::get<PathRouteMatch>(routeMatch).route;
     }
 
-    TRoute& regexRouteImpl(
+    Route& regexRouteImpl(
             const rx& regExp,
-            std::vector<detail::RouteSpecifier<TRequest, TResponse, TRouteContext>> routeSpecifications = {})
+            std::vector<detail::RouteSpecifier<TRouter, TRequest, TResponse, TRouteContext>> routeSpecifications = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
                 detail::makeRegex(regExp, regexMode_, trailingSlashMode_),
@@ -208,7 +213,7 @@ private:
 
 private:
     std::deque<RouteMatch> routeMatchList_;
-    TRoute noMatchRoute_;
+    Route noMatchRoute_;
     TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
     RegexMode regexMode_ = RegexMode::Regular;
 };

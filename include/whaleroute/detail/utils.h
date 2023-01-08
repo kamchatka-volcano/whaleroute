@@ -13,6 +13,12 @@
 
 namespace whaleroute::detail {
 
+template <typename, typename = void>
+struct IsCompleteType : std::false_type {};
+
+template <typename T>
+struct IsCompleteType<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
+
 template <typename TDst, typename TSrc>
 void concat(TDst& dst, const TSrc& src)
 {

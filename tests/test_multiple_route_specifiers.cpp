@@ -3,18 +3,22 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
+namespace multiple_route_specifiers {
+class MultipleRouteSpecifiers;
+}
+
 namespace whaleroute::config {
-template <typename TRequest, typename TResponse>
-struct RouteSpecification<RequestType, TRequest, TResponse> {
-    bool operator()(RequestType value, const TRequest& request, TResponse&) const
+template <>
+struct RouteSpecification<multiple_route_specifiers::MultipleRouteSpecifiers, RequestType> {
+    bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
     }
 };
 
-template <typename TRequest, typename TResponse>
-struct RouteSpecification<std::string, TRequest, TResponse> {
-    bool operator()(const std::string& value, const TRequest& request, TResponse& response) const
+template <>
+struct RouteSpecification<multiple_route_specifiers::MultipleRouteSpecifiers, std::string> {
+    bool operator()(const std::string& value, const Request& request, Response& response) const
     {
         return value == request.name || value == response.state->context;
     }
@@ -24,8 +28,9 @@ struct RouteSpecification<std::string, TRequest, TResponse> {
 
 namespace multiple_route_specifiers {
 
-class MultipleRouteSpecifiers : public ::testing::Test,
-                                public whaleroute::RequestRouter<Request, Response, std::string> {
+class MultipleRouteSpecifiers
+    : public ::testing::Test,
+      public whaleroute::RequestRouter<MultipleRouteSpecifiers, Request, Response, std::string> {
 public:
     void processRequest(const std::string& path, RequestType type, std::string name = {})
     {

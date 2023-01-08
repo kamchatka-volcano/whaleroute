@@ -11,10 +11,14 @@ struct Context {
     int counter = 0;
 };
 
+namespace {
+class Router;
+}
+
 namespace whaleroute::config {
 template <>
-struct RouteSpecification<RequestType, Request, Response, Context> {
-    bool operator()(RequestType value, const Request& request, Response&, Context&) const
+struct RouteSpecification<Router, RequestType> {
+    bool operator()(const RequestType& value, const Request& request, Response&, Context&) const
     {
         return value == request.type;
     }
@@ -32,7 +36,7 @@ struct StringConverter<ChapterString> {
 namespace {
 
 class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<Request, Response, std::string, Context> {
+               public whaleroute::RequestRouter<Router, Request, Response, std::string, Context> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {
@@ -148,6 +152,8 @@ struct IncrementContext {
         context.counter++;
     }
 };
+
+} // namespace
 
 using namespace whaleroute::string_literals;
 
@@ -420,5 +426,3 @@ TEST_F(Router, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
     checkResponse("TEST bar");
     ASSERT_EQ(state, 1); // Which means that routes contain different processor objects
 }
-
-} // namespace

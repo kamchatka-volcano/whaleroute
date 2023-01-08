@@ -3,10 +3,14 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
+namespace response_value_arguments {
+class ResponseValueFromArgs;
+}
+
 namespace whaleroute::config {
-template <typename TRequest, typename TResponse>
-struct RouteSpecification<RequestType, TRequest, TResponse> {
-    bool operator()(RequestType value, const TRequest& request, TResponse&) const
+template <>
+struct RouteSpecification<response_value_arguments::ResponseValueFromArgs, RequestType> {
+    bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
     }
@@ -49,7 +53,7 @@ private:
 };
 
 class ResponseValueFromArgs : public ::testing::Test,
-                              public whaleroute::RequestRouter<Request, Response, TestString> {
+                              public whaleroute::RequestRouter<ResponseValueFromArgs, Request, Response, TestString> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
