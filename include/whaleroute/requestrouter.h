@@ -1,11 +1,11 @@
 #ifndef WHALEROUTE_REQUESTROUTER_H
 #define WHALEROUTE_REQUESTROUTER_H
 
+#include "requestprocessorqueue.h"
 #include "types.h"
 #include "detail/external/sfun/functional.h"
 #include "detail/external/sfun/interface.h"
 #include "detail/irequestrouter.h"
-#include "detail/requestprocessorqueue.h"
 #include "detail/route.h"
 #include "detail/utils.h"
 #include <deque>
@@ -76,10 +76,10 @@ public:
     void process(const TRequest& request, TResponse& response)
     {
         auto queue = makeRequestProcessorQueue(request, response);
-        queue->launch();
+        queue.launch();
     }
 
-    std::unique_ptr<IRequestProcessorQueue> makeRequestProcessorQueue(const TRequest& request, TResponse& response)
+    RequestProcessorQueue makeRequestProcessorQueue(const TRequest& request, TResponse& response)
     {
         auto requestProcessorInvokerList = makeRouteRequestProcessorInvokerList(request, response);
         for (const auto& processor : noMatchRoute_.getRequestProcessors(sfun::AccessToken{*this}))
@@ -98,7 +98,7 @@ public:
                         return false;
                     });
 
-        return std::make_unique<detail::RequestProcessorQueue<TRouteContext>>(requestProcessorInvokerList);
+        return RequestProcessorQueue{requestProcessorInvokerList};
     }
 
 private:

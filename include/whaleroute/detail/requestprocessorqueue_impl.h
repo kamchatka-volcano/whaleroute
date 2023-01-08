@@ -1,23 +1,26 @@
-#ifndef WHALEROUTE_REQUESTPROCESSORQUEUE_H
-#define WHALEROUTE_REQUESTPROCESSORQUEUE_H
+#ifndef WHALEROUTE_REQUESTPROCESSORQUEUE_IMPL_H
+#define WHALEROUTE_REQUESTPROCESSORQUEUE_IMPL_H
 
-#include <whaleroute/irequestprocessorqueue.h>
+#include "external/sfun/interface.h"
 #include <functional>
-#include <memory>
-#include <optional>
 #include <vector>
 
 namespace whaleroute::detail {
 
-template <typename TRouteContext>
-class RequestProcessorQueue : public IRequestProcessorQueue {
+class IRequestProcessorQueueImpl : private sfun::Interface<IRequestProcessorQueueImpl> {
 public:
-    explicit RequestProcessorQueue(std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers)
+    virtual void launch() = 0;
+    virtual void stop() = 0;
+};
+
+template <typename TRouteContext>
+class RequestProcessorQueueImpl : public IRequestProcessorQueueImpl {
+public:
+    explicit RequestProcessorQueueImpl(std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers)
         : requestProcessorInvokers_{std::move(requestProcessorInvokers)}
-        , routeContext_{std::make_shared<TRouteContext>()}
     {
     }
-    RequestProcessorQueue() = default;
+    RequestProcessorQueueImpl() = default;
 
     void launch() override
     {
@@ -25,7 +28,7 @@ public:
         for (; currentIndex_ < requestProcessorInvokers_.size(); ++currentIndex_) {
             if (isStopped_)
                 break;
-            auto result = requestProcessorInvokers_.at(currentIndex_)(*routeContext_);
+            auto result = requestProcessorInvokers_.at(currentIndex_)(routeContext_);
             if (!result) {
                 currentIndex_ = requestProcessorInvokers_.size() + 1;
                 break;
@@ -42,9 +45,9 @@ private:
     std::size_t currentIndex_ = 0;
     bool isStopped_ = false;
     std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers_;
-    std::shared_ptr<TRouteContext> routeContext_;
+    TRouteContext routeContext_;
 };
 
 } // namespace whaleroute
 
-#endif // WHALEROUTE_REQUESTPROCESSORQUEUE_H
+#endif // WHALEROUTE_REQUESTPROCESSORQUEUE_IMPL_H
