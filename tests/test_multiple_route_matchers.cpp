@@ -3,13 +3,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-namespace {
-class MultipleRouteMatchers;
-}
-
 namespace whaleroute::config {
 template <>
-struct RouteMatcher<MultipleRouteMatchers, RequestType> {
+struct RouteMatcher<RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -17,7 +13,7 @@ struct RouteMatcher<MultipleRouteMatchers, RequestType> {
 };
 
 template <>
-struct RouteMatcher<MultipleRouteMatchers, std::string> {
+struct RouteMatcher<std::string> {
     bool operator()(const std::string& value, const Request& request, Response& response) const
     {
         return value == request.name || value == response.state->context;
@@ -28,7 +24,7 @@ struct RouteMatcher<MultipleRouteMatchers, std::string> {
 namespace {
 
 class MultipleRouteMatchers : public ::testing::Test,
-                              public whaleroute::RequestRouter<MultipleRouteMatchers, Request, Response, std::string> {
+                              public whaleroute::RequestRouter<Request, Response, std::string> {
 public:
     void processRequest(const std::string& path, RequestType type, std::string name = {})
     {

@@ -17,9 +17,8 @@ struct StringConverter<ChapterString> {
 } // namespace whaleroute::config
 
 namespace {
-class RouterWithoutRouteMatchersAndResponseValue
-    : public ::testing::Test,
-      public whaleroute::RequestRouter<RouterWithoutRouteMatchersAndResponseValue, Request, Response> {
+class RouterWithoutRouteMatchersAndResponseValue : public ::testing::Test,
+                                                   public whaleroute::RequestRouter<Request, Response> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {

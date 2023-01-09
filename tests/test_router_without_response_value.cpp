@@ -6,13 +6,9 @@ struct ChapterString {
     std::string value;
 };
 
-namespace {
-class RouterWithoutResponseValue;
-}
-
 namespace whaleroute::config {
 template <>
-struct RouteMatcher<RouterWithoutResponseValue, RequestType> {
+struct RouteMatcher<RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
         return value == request.type;
@@ -31,7 +27,7 @@ struct StringConverter<ChapterString> {
 
 namespace {
 class RouterWithoutResponseValue : public ::testing::Test,
-                                   public whaleroute::RequestRouter<RouterWithoutResponseValue, Request, Response> {
+                                   public whaleroute::RequestRouter<Request, Response> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {

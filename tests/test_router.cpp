@@ -11,13 +11,9 @@ struct Context {
     int counter = 0;
 };
 
-namespace {
-class Router;
-}
-
 namespace whaleroute::config {
 template <>
-struct RouteMatcher<Router, RequestType> {
+struct RouteMatcher<RequestType, Context> {
     bool operator()(const RequestType& value, const Request& request, Response&, Context&) const
     {
         return value == request.type;
@@ -36,7 +32,7 @@ struct StringConverter<ChapterString> {
 namespace {
 
 class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<Router, Request, Response, std::string, Context> {
+               public whaleroute::RequestRouter<Request, Response, std::string, Context> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {

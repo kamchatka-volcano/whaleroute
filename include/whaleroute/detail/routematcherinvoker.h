@@ -8,10 +8,10 @@
 
 namespace whaleroute::detail {
 
-template <typename TRouter, typename TArg, typename TRequest, typename TResponse>
+template <typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
 bool match(const TArg& arg, const TRequest& request, TResponse& response)
 {
-    using RouteMatcher = config::RouteMatcher<TRouter, TArg>;
+    using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
     if constexpr (
             !std::is_same_v<sfun::callable_return_type<RouteMatcher>, bool> ||
             !(std::is_same_v<
@@ -27,10 +27,10 @@ bool match(const TArg& arg, const TRequest& request, TResponse& response)
         return RouteMatcher{}(arg, request, response);
 }
 
-template <typename TRouter, typename TArg, typename TRequest, typename TResponse, typename TRouteContext>
+template <typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
 bool match(const TArg& arg, const TRequest& request, TResponse& response, TRouteContext& routeContext)
 {
-    using RouteMatcher = config::RouteMatcher<TRouter, TArg>;
+    using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
     if constexpr (
             !std::is_same_v<sfun::callable_return_type<RouteMatcher>, bool> ||
             !(std::is_same_v<
@@ -48,9 +48,9 @@ bool match(const TArg& arg, const TRequest& request, TResponse& response, TRoute
         return RouteMatcher{}(arg, request, response, routeContext);
 }
 
-template <typename TRouter, typename TRequest, typename TResponse, typename TRouteContext>
+template <typename TRequest, typename TResponse, typename TRouteContext>
 class RouteMatcherInvoker {
-    using ThisRouteMatcherInvoker = RouteMatcherInvoker<TRouter, TRequest, TResponse, TRouteContext>;
+    using ThisRouteMatcherInvoker = RouteMatcherInvoker<TRequest, TResponse, TRouteContext>;
 
 public:
     template <
@@ -60,7 +60,7 @@ public:
                     !std::is_same_v<TArg, std::vector<ThisRouteMatcherInvoker>>>* = nullptr>
     RouteMatcherInvoker(TArg&& arg)
     {
-        using RouteMatcher = config::RouteMatcher<TRouter, TArg>;
+        using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
         if constexpr (!detail::IsCompleteType<RouteMatcher>::value)
             static_assert(
                     sfun::dependent_false<RouteMatcher>,
@@ -70,9 +70,9 @@ public:
         predicate_ = [arg](const TRequest& request, TResponse& response, TRouteContext& routeContext)
         {
             if constexpr (std::is_same_v<TRouteContext, _>)
-                return match<TRouter>(arg, request, response);
+                return match<TRouteContext>(arg, request, response);
             else
-                return match<TRouter>(arg, request, response, routeContext);
+                return match<TRouteContext>(arg, request, response, routeContext);
         };
     }
 
