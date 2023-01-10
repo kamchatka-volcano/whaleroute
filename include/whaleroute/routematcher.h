@@ -4,7 +4,7 @@
 #include "types.h"
 
 namespace whaleroute::config {
-template <typename T, typename TRouteContext = _>
+template<typename T, typename TRouteContext = _>
 struct RouteMatcher;
 
 } // namespace whaleroute::config

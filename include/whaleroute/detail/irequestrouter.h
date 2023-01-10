@@ -5,23 +5,23 @@
 
 namespace whaleroute::detail {
 
-template <typename TResponse, typename TResponseValue>
+template<typename TResponse, typename TResponseValue>
 class IRequestRouterWithResponseValue {
 public:
     virtual ~IRequestRouterWithResponseValue() = default;
     virtual void setResponseValue(TResponse&, const TResponseValue&) = 0;
 };
 
-template <typename T>
+template<typename T>
 class Without {};
 
-template <typename TResponse, typename TResponseValue>
+template<typename TResponse, typename TResponseValue>
 using MaybeWithResponseValue = std::conditional_t<
         !std::is_same_v<TResponseValue, _>,
         IRequestRouterWithResponseValue<TResponse, TResponseValue>,
         Without<IRequestRouterWithResponseValue<TResponse, TResponseValue>>>;
 
-template <typename TRequest, typename TResponse, typename TResponseValue>
+template<typename TRequest, typename TResponse, typename TResponseValue>
 class IRequestRouter : public MaybeWithResponseValue<TResponse, TResponseValue> {
 public:
     virtual ~IRequestRouter() = default;

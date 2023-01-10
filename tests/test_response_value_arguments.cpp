@@ -4,7 +4,7 @@
 #include <algorithm>
 
 namespace whaleroute::config {
-template <>
+template<>
 struct RouteMatcher<RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {

@@ -14,7 +14,7 @@
 
 namespace whaleroute {
 
-template <typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
+template<typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
 class RequestRouter : private detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
     using Route = detail::Route<TRequest, TResponse, TResponseValue, TRouteContext>;
     using RequestProcessorFunc =
@@ -46,7 +46,7 @@ public:
         regexMode_ = mode;
     }
 
-    template <typename... TRouteMatcherArgs>
+    template<typename... TRouteMatcherArgs>
     Route& route(const std::string& path, TRouteMatcherArgs&&... matcherArgs)
     {
         return pathRouteImpl(path, {std::forward<TRouteMatcherArgs>(matcherArgs)...});
@@ -57,7 +57,7 @@ public:
         return pathRouteImpl(path, {});
     }
 
-    template <typename... TRouteMatcherArgs>
+    template<typename... TRouteMatcherArgs>
     Route& route(const rx& regExp, TRouteMatcherArgs&&... matcherArgs)
     {
         return regexRouteImpl(regExp, {std::forward<TRouteMatcherArgs>(matcherArgs)...});

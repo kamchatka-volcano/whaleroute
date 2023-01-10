@@ -10,7 +10,7 @@ namespace whaleroute {
 
 class RequestProcessorQueue {
 public:
-    template <typename TRouteContext>
+    template<typename TRouteContext>
     explicit RequestProcessorQueue(std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers)
         : impl_{std::make_shared<detail::RequestProcessorQueueImpl<TRouteContext>>(requestProcessorInvokers)}
     {

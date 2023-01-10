@@ -36,7 +36,7 @@ struct RouteParameters {
 };
 } // namespace detail
 
-template <int size = 0>
+template<int size = 0>
 struct RouteParameters : detail::RouteParameters {
     RouteParameters()
     {

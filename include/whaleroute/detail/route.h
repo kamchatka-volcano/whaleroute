@@ -13,13 +13,13 @@
 #include <vector>
 
 namespace whaleroute {
-template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class RequestRouter;
 }
 
 namespace whaleroute::detail {
 
-template <typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
 class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
@@ -35,7 +35,7 @@ public:
     {
     }
 
-    template <typename TProcessor, typename... TArgs>
+    template<typename TProcessor, typename... TArgs>
     auto process(TArgs&&... args) -> std::enable_if_t<std::is_constructible_v<TProcessor, TArgs...>, Route&>
     {
         if constexpr (std::is_copy_constructible_v<TProcessor>) {
@@ -77,7 +77,7 @@ public:
         return *this;
     }
 
-    template <typename TProcessor>
+    template<typename TProcessor>
     Route& process(TProcessor&& requestProcessor)
     {
         if constexpr (std::is_lvalue_reference_v<TProcessor>) {
@@ -117,7 +117,7 @@ public:
         return *this;
     }
 
-    template <
+    template<
             typename... TArgs,
             typename TCheckResponseValue = TResponseValue,
             typename = std::enable_if_t<!std::is_same_v<TCheckResponseValue, _>>>

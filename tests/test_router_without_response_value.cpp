@@ -7,7 +7,7 @@ struct ChapterString {
 };
 
 namespace whaleroute::config {
-template <>
+template<>
 struct RouteMatcher<RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
@@ -15,7 +15,7 @@ struct RouteMatcher<RequestType> {
     }
 };
 
-template <>
+template<>
 struct StringConverter<ChapterString> {
     static std::optional<ChapterString> fromString(const std::string& data)
     {

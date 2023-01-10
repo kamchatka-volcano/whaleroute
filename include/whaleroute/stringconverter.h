@@ -7,7 +7,7 @@
 
 namespace whaleroute::config {
 
-template <typename T>
+template<typename T>
 struct StringConverter {
     static std::optional<T> fromString(const std::string& data)
     {

@@ -4,7 +4,7 @@
 #include <algorithm>
 
 namespace whaleroute::config {
-template <>
+template<>
 struct RouteMatcher<RequestType> {
     bool operator()(RequestType value, const Request& request, Response&) const
     {
@@ -12,7 +12,7 @@ struct RouteMatcher<RequestType> {
     }
 };
 
-template <>
+template<>
 struct RouteMatcher<std::string> {
     bool operator()(const std::string& value, const Request& request, Response& response) const
     {

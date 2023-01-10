@@ -7,7 +7,7 @@ struct ChapterString {
 };
 
 namespace whaleroute::config {
-template <>
+template<>
 struct StringConverter<ChapterString> {
     static std::optional<ChapterString> fromString(const std::string& data)
     {

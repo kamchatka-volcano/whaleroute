@@ -45,14 +45,14 @@ inline std::string getRouteParamErrorInfo(const whaleroute::RouteParameterError&
     if (std::holds_alternative<whaleroute::RouteParameterCountMismatch>(error)) {
         const auto& errorInfo = std::get<whaleroute::RouteParameterCountMismatch>(error);
         return "ROUTE_PARAM_ERROR: PARAM COUNT MISMATCH,"
-               " EXPECTED:"
-                + std::to_string(errorInfo.expectedNumber) + " ACTUAL:" + std::to_string(errorInfo.actualNumber);
+               " EXPECTED:" +
+                std::to_string(errorInfo.expectedNumber) + " ACTUAL:" + std::to_string(errorInfo.actualNumber);
     }
     else if (std::holds_alternative<whaleroute::RouteParameterReadError>(error)) {
         const auto& errorInfo = std::get<whaleroute::RouteParameterReadError>(error);
         return "ROUTE_PARAM_ERROR: COULDN'T READ ROUTE PARAM,"
-               " INDEX:"
-                + std::to_string(errorInfo.index) + " VALUE:" + errorInfo.value;
+               " INDEX:" +
+                std::to_string(errorInfo.index) + " VALUE:" + errorInfo.value;
     }
     return {};
 }

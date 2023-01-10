@@ -8,7 +8,7 @@
 
 namespace whaleroute::detail {
 
-template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
+template<typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 constexpr void checkRequestProcessorSignature()
 {
     constexpr auto args = sfun::callable_args<TRequestProcessor>{};
@@ -33,11 +33,11 @@ constexpr void checkRequestProcessorSignature()
     }
 }
 
-template <typename TArgsTypeList, std::size_t paramsSize>
+template<typename TArgsTypeList, std::size_t paramsSize>
 using requestProcessorArgsRouteParams =
         sfun::decay_tuple_t<sfun::to_tuple_t<decltype(TArgsTypeList::template slice<0, paramsSize>())>>;
 
-template <typename TParamsTuple>
+template<typename TParamsTuple>
 auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TParamsTuple, RouteParameterError>
 {
     auto i = 0;
@@ -70,7 +70,7 @@ auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TPa
     return params;
 }
 
-template <typename TArgsTypeList, int paramsSize>
+template<typename TArgsTypeList, int paramsSize>
 auto readRouteParams(const std::vector<std::string>& routeParams)
         -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList, paramsSize>, RouteParameterError>
 {
@@ -94,7 +94,7 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
         return makeParams<ParamsTuple>(routeParams);
 }
 
-template <typename TArgs, typename TRouteContext>
+template<typename TArgs, typename TRouteContext>
 struct ParamsSize {
     static constexpr auto value()
     {
@@ -107,7 +107,7 @@ struct ParamsSize {
     };
 };
 
-template <typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
+template<typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
 void invokeRequestProcessor(
         TRequestProcessor& requestProcessor,
         const TRequest& request,

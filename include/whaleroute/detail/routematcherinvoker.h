@@ -8,7 +8,7 @@
 
 namespace whaleroute::detail {
 
-template <typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
+template<typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
 bool match(const TArg& arg, const TRequest& request, TResponse& response)
 {
     using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
@@ -27,7 +27,7 @@ bool match(const TArg& arg, const TRequest& request, TResponse& response)
         return RouteMatcher{}(arg, request, response);
 }
 
-template <typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
+template<typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
 bool match(const TArg& arg, const TRequest& request, TResponse& response, TRouteContext& routeContext)
 {
     using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
@@ -48,12 +48,12 @@ bool match(const TArg& arg, const TRequest& request, TResponse& response, TRoute
         return RouteMatcher{}(arg, request, response, routeContext);
 }
 
-template <typename TRequest, typename TResponse, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TRouteContext>
 class RouteMatcherInvoker {
     using ThisRouteMatcherInvoker = RouteMatcherInvoker<TRequest, TResponse, TRouteContext>;
 
 public:
-    template <
+    template<
             typename TArg,
             std::enable_if_t<
                     !std::is_base_of_v<ThisRouteMatcherInvoker, std::remove_reference_t<TArg>> &&

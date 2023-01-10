@@ -12,7 +12,7 @@ struct Context {
 };
 
 namespace whaleroute::config {
-template <>
+template<>
 struct RouteMatcher<RequestType, Context> {
     bool operator()(const RequestType& value, const Request& request, Response&, Context&) const
     {
@@ -20,7 +20,7 @@ struct RouteMatcher<RequestType, Context> {
     }
 };
 
-template <>
+template<>
 struct StringConverter<ChapterString> {
     static std::optional<ChapterString> fromString(const std::string& data)
     {

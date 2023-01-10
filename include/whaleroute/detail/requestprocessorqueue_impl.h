@@ -13,7 +13,7 @@ public:
     virtual void stop() = 0;
 };
 
-template <typename TRouteContext>
+template<typename TRouteContext>
 class RequestProcessorQueueImpl : public IRequestProcessorQueueImpl {
 public:
     explicit RequestProcessorQueueImpl(std::vector<std::function<bool(TRouteContext&)>> requestProcessorInvokers)
@@ -48,6 +48,6 @@ private:
     TRouteContext routeContext_;
 };
 
-} // namespace whaleroute
+} //namespace whaleroute::detail
 
 #endif // WHALEROUTE_REQUESTPROCESSORQUEUE_IMPL_H
