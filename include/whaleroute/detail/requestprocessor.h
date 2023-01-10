@@ -83,11 +83,12 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
     if constexpr (
             std::tuple_size_v<ParamsTuple> == 1 &&
             std::is_base_of_v<detail::RouteParameters, std::tuple_element_t<0, ParamsTuple>>) {
+        using RouteParams = std::tuple_element_t<0, ParamsTuple>;
         auto params = ParamsTuple{};
         auto& paramList = std::get<0>(params);
         paramList.value = routeParams;
-        if (paramList.numOfElements && *paramList.numOfElements > static_cast<int>(routeParams.size()))
-            return RouteParameterCountMismatch{*paramList.numOfElements, static_cast<int>(routeParams.size())};
+        if (RouteParams::MinSize::value > static_cast<int>(routeParams.size()))
+            return RouteParameterCountMismatch{RouteParams::MinSize::value, static_cast<int>(routeParams.size())};
         return params;
     }
     else

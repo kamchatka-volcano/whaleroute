@@ -31,18 +31,13 @@ struct rx {
 
 namespace detail {
 struct RouteParameters {
-    std::optional<int> numOfElements;
     std::vector<std::string> value;
 };
 } // namespace detail
 
-template<int size = 0>
+template<int minSize = 0>
 struct RouteParameters : detail::RouteParameters {
-    RouteParameters()
-    {
-        if constexpr (size > 0)
-            numOfElements = size;
-    }
+    using MinSize = std::integral_constant<int, minSize>;
 };
 
 struct RouteParameterCountMismatch {
