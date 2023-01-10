@@ -24,6 +24,7 @@ class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
     using Router = RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
+    friend Router;
 
 public:
     Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
@@ -135,7 +136,8 @@ public:
                 });
     }
 
-    std::vector<ProcessorFunc> getRequestProcessors(sfun::AccessPermission<Router>) const
+private:
+    std::vector<ProcessorFunc> getRequestProcessors() const
     {
         auto toMatchedProcessorFunc = [&](const ProcessorFunc& processor) -> ProcessorFunc
         {
