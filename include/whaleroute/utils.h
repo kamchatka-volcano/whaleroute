@@ -1,9 +1,9 @@
 #ifndef WHALEROUTE_UTILS_H
 #define WHALEROUTE_UTILS_H
 
+#include "stringconverter.h"
+#include "types.h"
 #include "external/sfun/string_utils.h"
-#include <whaleroute/stringconverter.h>
-#include <whaleroute/types.h>
 #include <algorithm>
 #include <functional>
 #include <regex>

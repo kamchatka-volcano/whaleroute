@@ -9,7 +9,7 @@ SealLake_Bundle(
         GIT_TAG v3
         DIRECTORIES
         include/sfun
-        DESTINATION include/whaleroute/detail/external
+        DESTINATION include/whaleroute/external
         TEXT_REPLACEMENTS
         "namespace sfun" "namespace whaleroute::sfun"
         "SFUN_" "WHALEROUTE_SFUN_"

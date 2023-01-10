@@ -1,7 +1,7 @@
 #ifndef WHALEROUTE_IREQUESTROUTER_H
 #define WHALEROUTE_IREQUESTROUTER_H
 
-#include <whaleroute/types.h>
+#include "types.h"
 
 namespace whaleroute::detail {
 

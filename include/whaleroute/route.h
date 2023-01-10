@@ -4,9 +4,9 @@
 #include "irequestrouter.h"
 #include "requestprocessor.h"
 #include "routematcherinvoker.h"
+#include "types.h"
 #include "utils.h"
 #include "external/sfun/interface.h"
-#include <whaleroute/types.h>
 #include <functional>
 #include <memory>
 #include <string>

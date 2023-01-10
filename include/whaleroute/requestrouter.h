@@ -1,13 +1,13 @@
 #ifndef WHALEROUTE_REQUESTROUTER_H
 #define WHALEROUTE_REQUESTROUTER_H
 
+#include "irequestrouter.h"
 #include "requestprocessorqueue.h"
+#include "route.h"
 #include "types.h"
-#include "detail/external/sfun/functional.h"
-#include "detail/external/sfun/interface.h"
-#include "detail/irequestrouter.h"
-#include "detail/route.h"
-#include "detail/utils.h"
+#include "utils.h"
+#include "external/sfun/functional.h"
+#include "external/sfun/interface.h"
 #include <deque>
 #include <regex>
 #include <variant>

@@ -1,7 +1,7 @@
 #ifndef WHALEROUTE_ROUTEMATCHERINVOKER_H
 #define WHALEROUTE_ROUTEMATCHERINVOKER_H
 
-#include <whaleroute/routematcher.h>
+#include "routematcher.h"
 #include <functional>
 #include <type_traits>
 #include <vector>
