@@ -75,10 +75,6 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
         -> std::variant<requestProcessorArgsRouteParams<TArgsTypeList, paramsSize>, RouteParameterError>
 {
     static_assert(paramsSize > 0);
-
-    if (paramsSize > routeParams.size())
-        return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
-
     using ParamsTuple = requestProcessorArgsRouteParams<TArgsTypeList, paramsSize>;
     if constexpr (
             std::tuple_size_v<ParamsTuple> == 1 &&
@@ -91,8 +87,12 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
             return RouteParameterCountMismatch{RouteParams::MinSize::value, static_cast<int>(routeParams.size())};
         return params;
     }
-    else
+    else {
+        if (paramsSize > routeParams.size())
+            return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
+
         return makeParams<ParamsTuple>(routeParams);
+    }
 }
 
 template<typename TArgs, typename TRouteContext>
