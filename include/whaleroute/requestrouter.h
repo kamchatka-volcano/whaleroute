@@ -41,11 +41,6 @@ public:
         trailingSlashMode_ = mode;
     }
 
-    void setRegexMode(RegexMode mode)
-    {
-        regexMode_ = mode;
-    }
-
     template<typename... TRouteMatcherArgs>
     Route& route(const std::string& path, TRouteMatcherArgs&&... matcherArgs)
     {
@@ -193,7 +188,7 @@ private:
             std::vector<detail::RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
-                detail::makeRegex(regExp, regexMode_, trailingSlashMode_),
+                detail::makeRegex(regExp, trailingSlashMode_),
                 {*this, std::move(routeMatchers), routeParametersErrorHandler()}});
         return std::get<RegExpRouteMatch>(routeMatch).route;
     }
@@ -202,7 +197,6 @@ private:
     std::deque<RouteMatch> routeMatchList_;
     Route noMatchRoute_;
     TrailingSlashMode trailingSlashMode_ = TrailingSlashMode::Optional;
-    RegexMode regexMode_ = RegexMode::Regular;
 };
 
 } // namespace whaleroute

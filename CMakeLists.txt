@@ -6,7 +6,7 @@ include(external/seal_lake)
 SealLake_Bundle(
         NAME whaleroute_sfun
         GIT_REPOSITORY https://github.com/kamchatka-volcano/sfun.git
-        GIT_TAG v3
+        GIT_TAG v4.0.0
         DIRECTORIES
         include/sfun
         DESTINATION include/whaleroute/external

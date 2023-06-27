@@ -8,7 +8,7 @@
 
 namespace whaleroute::detail {
 
-class IRequestProcessorQueueImpl : private sfun::Interface<IRequestProcessorQueueImpl> {
+class IRequestProcessorQueueImpl : private sfun::interface<IRequestProcessorQueueImpl> {
 public:
     virtual void launch() = 0;
     virtual void stop() = 0;

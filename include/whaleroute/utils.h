@@ -43,47 +43,20 @@ inline std::string makePath(const std::string& path, TrailingSlashMode mode)
     return path;
 }
 
-inline std::string regexValue(const rx& regExp, RegexMode regexMode)
+inline std::regex makeRegex(const rx& regExp, TrailingSlashMode mode)
 {
-    if (regexMode != RegexMode::TildaEscape)
-        return regExp.value;
-
-    const auto rxVal = regExp.value;
-    const auto startsWithTilda = sfun::startsWith(rxVal, "~~");
-    const auto endsWithTilda = sfun::endsWith(rxVal, "~~");
-    const auto splitRes = sfun::split(rxVal, "~~", false);
-    const auto rxValParts = [&splitRes]
-    {
-        auto res = std::vector<std::string>{};
-        std::transform(
-                splitRes.begin(),
-                splitRes.end(),
-                std::back_inserter(res),
-                [](const auto& rxValPartView)
-                {
-                    return sfun::replace(std::string{rxValPartView}, "~", "\\");
-                });
-        return res;
-    }();
-    return (startsWithTilda ? "~" : "") + sfun::join(rxValParts, "~") + (endsWithTilda ? "~" : "");
-}
-
-inline std::regex makeRegex(const rx& regExp, RegexMode regexMode, TrailingSlashMode mode)
-{
-    if (regexMode == RegexMode::Regular && mode == TrailingSlashMode::Strict)
+    if (mode == TrailingSlashMode::Strict)
         return std::regex{regExp.value};
 
-    auto rxVal = regexValue(regExp, regexMode);
-    if (mode == TrailingSlashMode::Optional) {
-        if (sfun::endsWith(rxVal, "/")) {
-            rxVal.pop_back();
-            return std::regex{rxVal};
-        }
-        else if (sfun::endsWith(rxVal, "/)")) {
-            rxVal[rxVal.size() - 1] = '?';
-            rxVal += ')';
-            return std::regex{rxVal};
-        }
+    auto rxVal = regExp.value;
+    if (sfun::ends_with(rxVal, "/")) {
+        rxVal.pop_back();
+        return std::regex{rxVal};
+    }
+    else if (sfun::ends_with(rxVal, "/)")) {
+        rxVal[rxVal.size() - 1] = '?';
+        rxVal += ')';
+        return std::regex{rxVal};
     }
     return std::regex{rxVal};
 }

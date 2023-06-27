@@ -20,11 +20,6 @@ enum class TrailingSlashMode {
     Strict
 };
 
-enum class RegexMode {
-    Regular,
-    TildaEscape
-};
-
 struct rx {
     std::string value;
 };
