@@ -22,7 +22,11 @@ constexpr void checkRequestProcessorSignature()
             static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
             static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
         }
-        else if constexpr (std::is_same_v<TRouteContext&, typename decltype(sfun::get<args.size() - 1>(args))::type>) {
+        else if constexpr (
+                std::is_lvalue_reference_v<typename decltype(sfun::get<args.size() - 1>(args))::type> &&
+                std::is_same_v<
+                        TRouteContext,
+                        std::decay_t<typename decltype(sfun::get<args.size() - 1>(args))::type>>) {
             static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 3>(args))::type>);
             static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
         }
@@ -101,7 +105,8 @@ struct ParamsSize {
     {
         constexpr auto args = TArgs{};
         using LastArg = typename decltype(sfun::get<TArgs::size() - 1>(args))::type;
-        if constexpr (args.size() > 2 && std::is_same_v<LastArg, TRouteContext&>)
+        if constexpr (
+                args.size() > 2 && std::is_reference_v<LastArg> && std::is_same_v<std::decay_t<LastArg>, TRouteContext>)
             return args.size() - 3;
         else
             return args.size() - 2;

@@ -149,6 +149,13 @@ struct IncrementContext {
     }
 };
 
+struct SendContext {
+    void operator()(const Request&, Response& response, const Context& context)
+    {
+        response.send(std::to_string(context.counter));
+    }
+};
+
 } // namespace
 
 using namespace whaleroute::string_literals;
@@ -201,6 +208,7 @@ TEST_F(Router, Matching)
                     {
                         response.send(std::to_string(context.counter));
                     });
+    route("/context2", RequestType::GET).process<SendContext>();
 
     route(whaleroute::rx{"/(.+)/context"}, RequestType::GET)
             .process(
@@ -272,6 +280,9 @@ TEST_F(Router, Matching)
     checkResponse("404");
 
     processRequest("/context");
+    checkResponse("1");
+
+    processRequest("/context2");
     checkResponse("1");
 
     processRequest("/test/context");
