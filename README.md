@@ -7,7 +7,7 @@
 **whaleroute** - is a C++17 header-only library for request routing. It is designed to bind handlers to HTTP requests,
 but it can also be easily used with other protocols since the library is implemented as a generic class template.  
 If your incoming data processing function has a signature like `void(const Request&, Response&)` and you need to perform
-different actions based on a string value from the request object, **whaleRoute** can be of great help.
+different actions based on a string value from the request object, **whaleroute** can be of great help.
 
 * [Usage](#implementing-the-router)
   * [Implementing the router](#implementing-the-router)
@@ -77,7 +77,8 @@ Now our router can be used like this:
 
 The `process` method accepts any callable that can be invoked with the registered request and response objects.
 Therefore, in addition to lambdas, it is possible to use free functions and function objects. It is also possible to
-specify the type of the invocable class, allowing whaleroute to instantiate and take ownership of the request processor
+specify the type of the invocable class, allowing **whaleroute** to instantiate and take ownership of the request
+processor
 object.
 
 ```c++
@@ -125,8 +126,9 @@ Now `Request::Method` can be specified in routes:
 
 #### Registering the response value setter
 
-To simplify the setup of routes even further, it is possible to register the response value setter and use the value
-instead of the request processor object or lambda. To do this, it is necessary to pass the response value type as the
+To simplify the setup of routes even further, it is possible to register the response value setter and applying the
+value directly
+instead of the registering request processor object. To do this, it is necessary to pass the response value type as the
 3rd template argument of `whaleroute::RequestRouter` and implement the virtual function:
 
 * `void setResponseValue(TResponse&, const TResponseValue&) = 0;`
@@ -251,6 +253,68 @@ router.route(whaleroute::rx{"/.*"}, Request::Method::GET).set("HTTP/1.1 200 OK\r
 ```
 
 Currently, the regular expressions use the standard C++ library with ECMAScript grammar.
+
+When using regular expressions, request processors can accept additional parameters to capture the values of expression
+capturing groups.
+
+```c++
+void showPage(int pageNumber, const Request&, Response& response)
+{
+    response.send("page" + std::to_string(pageNumber));
+}
+router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+```
+
+The conversion of strings from the capturing groups to the parameters of the request processor is performed using the
+standard `std::stringstream` stream. If the conversion is not possible, a runtime error will be raised. To support the
+conversion of user-defined types, you can use the specialization of `whaleroute::config::StringConverter`.
+
+```c++
+struct PageNumber{
+    int value;
+};
+
+template<>
+struct whaleroute::config::StringConverter<PageNumber> {
+    static std::optional<PageNumber> fromString(const std::string& data)
+    {
+        return PageNumber{std::stoi(data)};
+    }
+};
+
+void showPage(PageNumber pageNumber, const Request&, Response& response)
+{
+    response.send("page" + std::to_string(pageNumber.value));
+}
+router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+```
+
+When the regular expression of a route is set dynamically, you may need to capture an arbitrary number of parameters. In
+such cases, you can use the `whaleroute::RouteParameters<>` structure, which stores the values of capturing groups in a
+vector of strings.
+
+```c++
+void showBook(const RouteParameters<>& bookIds, const Request&, Response& response)
+{
+    if (bookIds.value.size() == 1)
+        response.send("book" + std::to_string(bookIds.value.at(0)));
+    if (bookIds.value.size() == 2)
+        response.send("book" + std::to_string(bookIds.value.at(0)) + std::to_string(bookIds.value.at(1)));
+}
+router.route(whaleroute::rx{"/book/(\\d+)/(\\d+)"}, Request::Method::GET).process(showBook);
+router.route(whaleroute::rx{"/book/(\\d+)"}, Request::Method::GET).process(showBook);
+```
+
+If capturing the string array is more suitable for your request processor, you can use `RouteParameters` with a specific
+number of capturing groups that must be present in the regular expression:
+
+```c++
+void showPage(const RouteParameters<1>& pageNumber, const Request&, Response& response)
+{
+    response.send("page" + pageNumber.value().at(0));
+}
+router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+```
 
 #### Trailing slash matching
 
