@@ -67,7 +67,7 @@ public:
                     "The implementation of the whaleroute::config::config::RouteMatcher<TRouter> functor "
                     "must be provided");
 
-        predicate_ = [arg](const TRequest& request, TResponse& response, TRouteContext& routeContext)
+        predicate_ = [arg](const TRequest& request, TResponse& response, [[maybe_unused]] TRouteContext& routeContext)
         {
             if constexpr (std::is_same_v<TRouteContext, _>)
                 return match<TRouteContext>(arg, request, response);
