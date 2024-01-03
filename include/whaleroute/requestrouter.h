@@ -14,9 +14,9 @@
 
 namespace whaleroute {
 
-template<typename TRequest, typename TResponse, typename TResponseValue = _, typename TRouteContext = _>
-class RequestRouter : private detail::IRequestRouter<TRequest, TResponse, TResponseValue> {
-    using Route = detail::Route<TRequest, TResponse, TResponseValue, TRouteContext>;
+template<typename TRequest, typename TResponse, typename TResponseConverter = _, typename TRouteContext = _>
+class RequestRouter : private detail::IRequestRouter<TRequest, TResponse> {
+    using Route = detail::Route<TRequest, TResponse, TResponseConverter, TRouteContext>;
     using RequestProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
 
@@ -32,7 +32,7 @@ class RequestRouter : private detail::IRequestRouter<TRequest, TResponse, TRespo
 
 public:
     RequestRouter()
-        : noMatchRoute_{*this, {}, routeParametersErrorHandler()}
+        : noMatchRoute_{{}, routeParametersErrorHandler()}
     {
     }
 
@@ -179,7 +179,7 @@ private:
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(
-                PathRouteMatch{routePath, Route{*this, routeMatchers, routeParametersErrorHandler()}});
+                PathRouteMatch{routePath, Route{routeMatchers, routeParametersErrorHandler()}});
         return std::get<PathRouteMatch>(routeMatch).route;
     }
 
@@ -189,7 +189,7 @@ private:
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
                 detail::makeRegex(regExp, trailingSlashMode_),
-                {*this, std::move(routeMatchers), routeParametersErrorHandler()}});
+                {std::move(routeMatchers), routeParametersErrorHandler()}});
         return std::get<RegExpRouteMatch>(routeMatch).route;
     }
 

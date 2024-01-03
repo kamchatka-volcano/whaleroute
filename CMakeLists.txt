@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(whaleroute VERSION 2.0.0 DESCRIPTION "C++17 request routing library")
+project(whaleroute VERSION 3.0.0 DESCRIPTION "C++17 request routing library")
 include(GNUInstallDirs)
 include(external/seal_lake)
 

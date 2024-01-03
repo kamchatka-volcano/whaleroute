@@ -27,6 +27,7 @@ struct StringConverter<ChapterString> {
         return ChapterString{data};
     }
 };
+
 } // namespace whaleroute::config
 
 namespace {
@@ -38,8 +39,8 @@ struct ResponseSender {
     }
 };
 
-class Router : public ::testing::Test,
-               public whaleroute::RequestRouter<Request, Response, ResponseSender, Context> {
+class RouterAltRequestProcessor : public ::testing::Test,
+                                  public whaleroute::RequestRouter<Request, Response, ResponseSender, Context> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {
@@ -88,9 +89,9 @@ public:
     {
     }
 
-    void operator()(const Request&, Response& response)
+    std::string operator()(const Request&)
     {
-        response.send("Hello " + (name_.empty() ? "world" : name_));
+        return "Hello " + (name_.empty() ? "world" : name_);
     }
 
 private:
@@ -104,11 +105,10 @@ public:
     {
     }
 
-    void operator()(const std::string& chapterName, const int& pageIndex, const Request&, Response& response)
+    std::string operator()(const std::string& chapterName, const int& pageIndex, const Request&)
     {
-        response.send(
-                title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" +
-                std::to_string(pageIndex) + "]");
+        return title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName + ", page[" +
+                std::to_string(pageIndex) + "]";
     }
 
 private:
@@ -116,11 +116,10 @@ private:
 };
 
 struct BookProcessor {
-    void operator()(const whaleroute::RouteParameters<3>& params, const Request&, Response& response)
+    std::string operator()(const whaleroute::RouteParameters<3>& params, const Request&)
     {
-        response.send(
-                "Book: " + params.value.at(0) + ", Chapter: " + params.value.at(1) + ", page[" + params.value.at(2) +
-                "]");
+        return "Book: " + params.value.at(0) + ", Chapter: " + params.value.at(1) + ", page[" + params.value.at(2) +
+                "]";
     }
 };
 
@@ -152,9 +151,9 @@ struct IncrementContext {
 };
 
 struct SendContext {
-    void operator()(const Request&, Response& response, const Context& context)
+    std::string operator()(const Request&, const Context& context)
     {
-        response.send(std::to_string(context.counter));
+        return std::to_string(context.counter);
     }
 };
 
@@ -162,7 +161,7 @@ struct SendContext {
 
 using namespace whaleroute::string_literals;
 
-TEST_F(Router, Matching)
+TEST_F(RouterAltRequestProcessor, Matching)
 {
     route(whaleroute::rx{".+"}).process<IncrementContext>();
     route("/", RequestType::GET).process<GreeterPageProcessor>();
@@ -291,7 +290,7 @@ TEST_F(Router, Matching)
     checkResponse("test: 1");
 }
 
-TEST_F(Router, DefaultUnmatchedRequestHandler)
+TEST_F(RouterAltRequestProcessor, DefaultUnmatchedRequestHandler)
 {
     route("/", RequestType::GET).set("Hello world");
     processRequest("/foo");
@@ -300,7 +299,7 @@ TEST_F(Router, DefaultUnmatchedRequestHandler)
     checkResponse("NO_MATCH");
 }
 
-TEST_F(Router, MultipleRoutesMatching)
+TEST_F(RouterAltRequestProcessor, MultipleRoutesMatching)
 {
     route(whaleroute::rx{"/greet/.*"}, RequestType::GET)
             .process(
@@ -371,7 +370,7 @@ private:
     int& state_;
 };
 
-TEST_F(Router, SameProcessorObjectUsedInMultipleRoutes)
+TEST_F(RouterAltRequestProcessor, SameProcessorObjectUsedInMultipleRoutes)
 {
     int state = 0;
     auto counterProcessor = CounterRouteProcessor{state};
@@ -385,7 +384,7 @@ TEST_F(Router, SameProcessorObjectUsedInMultipleRoutes)
     ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(Router, SameProcessorTypeCreatedInMultipleRoutes)
+TEST_F(RouterAltRequestProcessor, SameProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
     route("/test", RequestType::GET).process<CounterRouteProcessor>(state);
@@ -416,7 +415,7 @@ private:
     int& state_;
 };
 
-TEST_F(Router, SameParametrizedProcessorObjectUsedInMultipleRoutes)
+TEST_F(RouterAltRequestProcessor, SameParametrizedProcessorObjectUsedInMultipleRoutes)
 {
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
@@ -430,7 +429,7 @@ TEST_F(Router, SameParametrizedProcessorObjectUsedInMultipleRoutes)
     ASSERT_EQ(state, 2); // Which means that routes contain the same processor object
 }
 
-TEST_F(Router, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
+TEST_F(RouterAltRequestProcessor, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
     route(whaleroute::rx{"/test/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);

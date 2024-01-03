@@ -11,6 +11,7 @@ SealLake_GoogleTest(
         test_router_without_response_value.cpp
         test_router_without_route_matchers.cpp
         test_router_without_route_matchers_and_response_value.cpp
+        test_router_alt_request_processor.cpp
         LIBRARIES
         whaleroute::whaleroute
 )

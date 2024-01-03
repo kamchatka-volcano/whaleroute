@@ -17,6 +17,7 @@ struct StringConverter<ChapterString> {
 } // namespace whaleroute::config
 
 namespace {
+
 class RouterWithoutRouteMatchersAndResponseValue : public ::testing::Test,
                                                    public whaleroute::RequestRouter<Request, Response> {
 public:

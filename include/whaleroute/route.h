@@ -13,25 +13,23 @@
 #include <vector>
 
 namespace whaleroute {
-template<typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TResponseConverter, typename TRouteContext>
 class RequestRouter;
 }
 
 namespace whaleroute::detail {
 
-template<typename TRequest, typename TResponse, typename TResponseValue, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TResponseConverter, typename TRouteContext>
 class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
-    using Router = RequestRouter<TRequest, TResponse, TResponseValue, TRouteContext>;
+    using Router = RequestRouter<TRequest, TResponse, TResponseConverter, TRouteContext>;
     friend Router;
 
 public:
-    Route(IRequestRouter<TRequest, TResponse, TResponseValue>& router,
-          std::vector<RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers,
+    Route(std::vector<RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers,
           std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
-        : router_{router}
-        , routeMatchers_{std::move(routeMatchers)}
+        : routeMatchers_{std::move(routeMatchers)}
         , routeParameterErrorHandler_{std::move(routeParameterErrorHandler)}
     {
     }
@@ -48,7 +46,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext) mutable
                     {
-                        invokeRequestProcessor<TProcessor, TRequest, TResponse>(
+                        invokeRequestProcessor<TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,
@@ -66,7 +64,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor<TProcessor, TRequest, TResponse>(
+                        invokeRequestProcessor<TResponseConverter>(
                                 *requestProcessor,
                                 request,
                                 response,
@@ -81,7 +79,7 @@ public:
     template<typename TProcessor>
     Route& process(TProcessor&& requestProcessor)
     {
-        if constexpr (std::is_lvalue_reference_v<TProcessor>) {
+        if constexpr (std::is_lvalue_reference_v<decltype(requestProcessor)>) {
             processorList_.emplace_back(
                     [&requestProcessor, this]( //
                             const TRequest& request,
@@ -89,7 +87,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor(
+                        invokeRequestProcessor<TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,
@@ -100,13 +98,13 @@ public:
         }
         else {
             processorList_.emplace_back(
-                    [requestProcessor = std::move(requestProcessor), this]( //
+                    [requestProcessor = std::forward<TProcessor>(requestProcessor), this]( //
                             const TRequest& request,
                             TResponse& response,
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor(
+                        invokeRequestProcessor<TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,
@@ -120,19 +118,18 @@ public:
 
     template<
             typename... TArgs,
-            typename TCheckResponseValue = TResponseValue,
-            typename = std::enable_if_t<!std::is_same_v<TCheckResponseValue, _>>>
+            typename TCheckResponseConverter = TResponseConverter,
+            typename = std::enable_if_t<!std::is_same_v<TCheckResponseConverter, _>>>
     void set(TArgs&&... args)
     {
-        auto responseValue = TResponseValue{std::forward<TArgs>(args)...};
         processorList_.emplace_back(
-                [responseValue, this]( //
+                [=]( //
                         const TRequest&,
                         TResponse& response,
                         const std::vector<std::string>&,
                         TRouteContext&) mutable
                 {
-                    router_.setResponseValue(response, responseValue);
+                    TResponseConverter{}(response, std::forward<TArgs>(args)...);
                 });
     }
 
@@ -170,7 +167,6 @@ private:
 
 private:
     std::vector<ProcessorFunc> processorList_;
-    IRequestRouter<TRequest, TResponse, TResponseValue>& router_;
     std::vector<RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers_;
     std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };

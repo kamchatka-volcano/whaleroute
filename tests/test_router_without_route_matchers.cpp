@@ -17,8 +17,16 @@ struct StringConverter<ChapterString> {
 } // namespace whaleroute::config
 
 namespace {
+
+struct ResponseSender {
+    void operator()(Response& response, const std::string& data)
+    {
+        response.send(data);
+    }
+};
+
 class RouterWithoutRouteMatchers : public ::testing::Test,
-                                   public whaleroute::RequestRouter<Request, Response, std::string> {
+                                   public whaleroute::RequestRouter<Request, Response, ResponseSender> {
 public:
     void processRequest(const std::string& path, RequestType requestType = RequestType::GET, std::string name = {})
     {
@@ -42,11 +50,6 @@ protected:
     void processUnmatchedRequest(const Request&, Response& response) final
     {
         response.send("NO_MATCH");
-    }
-
-    void setResponseValue(Response& response, const std::string& value) final
-    {
-        response.send(value);
     }
 
     bool isRouteProcessingFinished(const Request&, Response& response) const final

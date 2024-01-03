@@ -6,13 +6,14 @@
 
 **whaleroute** - is a C++17 header-only library for request routing. It is designed to bind handlers to HTTP requests,
 but it can also be easily used with other protocols since the library is implemented as a generic class template.  
-If your incoming data processing function has a signature like `void(const Request&, Response&)` and you need to perform
+If your incoming data processing function has a signature like `void(const Request&, Response&)`
+or `Response(const Request&)` and you need to perform
 different actions based on a string value from the request object, **whaleroute** can be of great help.
 
 * [Usage](#implementing-the-router)
   * [Implementing the router](#implementing-the-router)
   * [Registering route matchers](#registering-route-matchers)
-  * [Registering the response value setter](#registering-the-response-value-setter)
+  * [Registering the response converter](#registering-the-response-converter)
   * [Matching multiple routes](#matching-multiple-routes)
   * [Registering the route context](#registering-the-route-context)
   * [Using regular expressions](#using-regular-expressions)
@@ -124,47 +125,59 @@ Now `Request::Method` can be specified in routes:
     }); 
 ```
 
-#### Registering the response value setter
+#### Registering the response converter
 
-To simplify the setup of routes even further, it is possible to register the response value setter and applying the
-value directly
-instead of the registering request processor object. To do this, it is necessary to pass the response value type as the
-3rd template argument of `whaleroute::RequestRouter` and implement the virtual function:
-
-* `void setResponseValue(TResponse&, const TResponseValue&) = 0;`
+To further simplify the setup of routes, it is possible to set the response value directly instead of registering a
+request processor object. To achieve this, it is necessary to register a response converter that sets the passed value
+to the response object. To do this, provide a callable structure with the following
+signature: `void(Response& response, const TValue& value)`, and pass it as the 3rd template argument
+to `whaleroute::RequestRouter`.
 
 ```c++
 #include <whaleroute/requestrouter.h>
 
-class Router : public whaleroute::RequestRouter<Request, Response, std::string>{
+struct ResponseSetter{
+    void operator()(Response& response, const std::string& value)
+    {
+        response.send(value);
+    }
+};
+
+class Router : public whaleroute::RequestRouter<Request, Response, ResponseSetter>{
     std::string getRequestPath(const TRequest& request) final
     {
         return request.uri;
-    }
-    
-    Request::Method getRequestType(const Request& request) final
-    {
-        return request.method;
     }
     
     void processUnmatchedRequest(const Request&, Response& response)
     {
         response.send("HTTP/1.1 418 I'm a teapot\r\n\r\n");
     }
-    
-    void setResponseValue(Response& response, const std::string& value)
-    {
-        response.send(value);
-    }
 };
 ```
 
-Now the routes have a `set` method available:
+Now routes have the `set` method available:
 
 ```c++
     auto router = Router{};
     router.route("/", Request::Method::GET).set("HTTP/1.1 200 OK\r\n\r\n");
     //...
+    router.process(request, response);
+```
+
+When a response converter is set, it is also possible to use request processors that return response values instead of
+taking a reference to the response object.
+
+```c++
+    struct Responder{
+        std::string operator()(const Request&)
+        {
+            return "HTTP/1.1 200 OK\r\n\r\n";
+        }
+    };
+ 
+    auto router = Router{}; 
+    router.route("/", Request::Method::GET).process<Responder>();
     router.process(request, response);
 ```
 

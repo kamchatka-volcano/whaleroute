@@ -12,27 +12,57 @@ template<typename TRequestProcessor, typename TRequest, typename TResponse, type
 constexpr void checkRequestProcessorSignature()
 {
     constexpr auto args = sfun::callable_args<TRequestProcessor>{};
-    static_assert(args.size() >= 2);
-    if constexpr (std::is_same_v<TRouteContext, _>) {
-        static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
-        static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
-    }
-    else {
-        if constexpr (args.size() == 2) {
+    using returnType = sfun::callable_return_type<TRequestProcessor>;
+    if constexpr (std::is_same_v<returnType, void>) {
+        static_assert(args.size() >= 2);
+        if constexpr (std::is_same_v<TRouteContext, _>) {
             static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
             static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
-        }
-        else if constexpr (
-                std::is_lvalue_reference_v<typename decltype(sfun::get<args.size() - 1>(args))::type> &&
-                std::is_same_v<
-                        TRouteContext,
-                        std::decay_t<typename decltype(sfun::get<args.size() - 1>(args))::type>>) {
-            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 3>(args))::type>);
-            static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
         }
         else {
-            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
-            static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+            if constexpr (args.size() == 2) {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+                static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+            }
+            else if constexpr (
+                    std::is_lvalue_reference_v<typename decltype(sfun::get<args.size() - 1>(args))::type> &&
+                    std::is_same_v<
+                            TRouteContext,
+                            std::decay_t<typename decltype(sfun::get<args.size() - 1>(args))::type>>) {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 3>(args))::type>);
+                static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+            }
+            else {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+                static_assert(std::is_same_v<TResponse&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+            }
+        }
+    }
+    else {
+        static_assert(args.size() >= 1);
+        if constexpr (std::is_same_v<TRouteContext, _>) {
+            static_assert(std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+        }
+        else {
+            if constexpr (args.size() == 1) {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+            }
+            else if constexpr (
+                    std::is_lvalue_reference_v<typename decltype(sfun::get<args.size() - 1>(args))::type> &&
+                    std::is_same_v<
+                            TRouteContext,
+                            std::decay_t<typename decltype(sfun::get<args.size() - 1>(args))::type>>) {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 2>(args))::type>);
+            }
+            else {
+                static_assert(
+                        std::is_same_v<const TRequest&, typename decltype(sfun::get<args.size() - 1>(args))::type>);
+            }
         }
     }
 }
@@ -99,21 +129,33 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
     }
 }
 
-template<typename TArgs, typename TRouteContext>
-struct ParamsSize {
-    static constexpr auto value()
-    {
-        constexpr auto args = TArgs{};
-        using LastArg = typename decltype(sfun::get<TArgs::size() - 1>(args))::type;
+template<typename TArgs, typename TRouteContext, typename TReturnType>
+constexpr int getParamsCount()
+{
+    constexpr auto args = TArgs{};
+    using LastArg = typename decltype(sfun::get<TArgs::size() - 1>(args))::type;
+    if constexpr (std::is_same_v<TReturnType, void>) {
         if constexpr (
                 args.size() > 2 && std::is_reference_v<LastArg> && std::is_same_v<std::decay_t<LastArg>, TRouteContext>)
             return args.size() - 3;
         else
             return args.size() - 2;
+    }
+    else {
+        if constexpr (
+                args.size() > 1 && std::is_reference_v<LastArg> && std::is_same_v<std::decay_t<LastArg>, TRouteContext>)
+            return args.size() - 2;
+        else
+            return args.size() - 1;
     };
-};
+}
 
-template<typename TRequestProcessor, typename TRequest, typename TResponse, typename TRouteContext>
+template<
+        typename TResponseConverter,
+        typename TRequestProcessor,
+        typename TRequest,
+        typename TResponse,
+        typename TRouteContext>
 void invokeRequestProcessor(
         TRequestProcessor& requestProcessor,
         const TRequest& request,
@@ -125,15 +167,24 @@ void invokeRequestProcessor(
     checkRequestProcessorSignature<TRequestProcessor, TRequest, TResponse, TRouteContext>();
 
     constexpr auto args = sfun::callable_args<TRequestProcessor>{};
-    constexpr auto paramsSize = ParamsSize<decltype(args), TRouteContext>{};
-    if constexpr (!paramsSize.value()) {
-        if constexpr (args.size() == 2)
-            requestProcessor(request, response);
-        else
-            requestProcessor(request, response, routeContext);
+    using ReturnType = sfun::callable_return_type<TRequestProcessor>;
+    constexpr auto paramsCount = getParamsCount<decltype(args), TRouteContext, ReturnType>();
+    if constexpr (!paramsCount) {
+        if constexpr (std::is_same_v<ReturnType, void>) {
+            if constexpr (args.size() == 2)
+                requestProcessor(request, response);
+            else
+                requestProcessor(request, response, routeContext);
+        }
+        else {
+            if constexpr (args.size() == 1)
+                TResponseConverter{}(response, requestProcessor(request));
+            else
+                TResponseConverter{}(response, requestProcessor(request, routeContext));
+        }
     }
     else {
-        auto paramsResult = readRouteParams<decltype(args), paramsSize.value()>(routeParams);
+        auto paramsResult = readRouteParams<decltype(args), paramsCount>(routeParams);
         auto paramsResultVisitor = sfun::overloaded{
                 [&](const RouteParameterError& error)
                 {
@@ -144,10 +195,19 @@ void invokeRequestProcessor(
                 {
                     auto callProcess = [&](const auto&... param)
                     {
-                        if constexpr (args.size() - paramsSize.value() == 2)
-                            requestProcessor(param..., request, response);
-                        else
-                            requestProcessor(param..., request, response, routeContext);
+                        constexpr auto paramsCount = getParamsCount<decltype(args), TRouteContext, ReturnType>();
+                        if constexpr (std::is_same_v<ReturnType, void>) {
+                            if constexpr (args.size() - paramsCount == 2)
+                                requestProcessor(param..., request, response);
+                            else
+                                requestProcessor(param..., request, response, routeContext);
+                        }
+                        else {
+                            if constexpr (args.size() - paramsCount == 1)
+                                TResponseConverter{}(response, requestProcessor(param..., request));
+                            else
+                                TResponseConverter{}(response, requestProcessor(param..., request, routeContext));
+                        }
                     };
                     std::apply(callProcess, params);
                 }};

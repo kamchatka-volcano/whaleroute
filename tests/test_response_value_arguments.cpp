@@ -48,8 +48,15 @@ private:
     std::string value_;
 };
 
+struct TestStringResponseConverter {
+    void operator()(Response& response, const TestString& value)
+    {
+        response.state->data = value.value();
+    }
+};
+
 class ResponseValueFromArgs : public ::testing::Test,
-                              public whaleroute::RequestRouter<Request, Response, TestString> {
+                              public whaleroute::RequestRouter<Request, Response, TestStringResponseConverter> {
 public:
     void processRequest(RequestType type, const std::string& path)
     {
@@ -75,11 +82,6 @@ protected:
         response.state->data = "NO_MATCH";
     }
 
-    void setResponseValue(Response& response, const TestString& value) final
-    {
-        response.state->data = value.value();
-    }
-
 protected:
     std::string responseData_;
 };
@@ -89,7 +91,7 @@ protected:
 TEST_F(ResponseValueFromArgs, Default)
 {
     route("/", RequestType::GET).set("Hello world");
-    route().set("Not found", TestString::CaseMode::UpperCase);
+    route().set(TestString{"Not found", TestString::CaseMode::UpperCase});
 
     processRequest(RequestType::GET, "/");
     checkResponse("Hello world");
