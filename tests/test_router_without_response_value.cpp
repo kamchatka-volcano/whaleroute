@@ -9,7 +9,7 @@ struct ChapterString {
 namespace whaleroute::config {
 template<>
 struct RouteMatcher<RequestType> {
-    bool operator()(RequestType value, const Request& request, Response&) const
+    bool operator()(RequestType value, const Request& request) const
     {
         return value == request.type;
     }

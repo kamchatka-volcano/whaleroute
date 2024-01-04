@@ -27,7 +27,7 @@ class Route {
     friend Router;
 
 public:
-    Route(std::vector<RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers,
+    Route(std::vector<RouteMatcherInvoker<TRequest, TRouteContext>> routeMatchers,
           std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler)
         : routeMatchers_{std::move(routeMatchers)}
         , routeParameterErrorHandler_{std::move(routeParameterErrorHandler)}
@@ -147,9 +147,9 @@ private:
                 if (!std::all_of(
                             routeMatchers_.begin(),
                             routeMatchers_.end(),
-                            [&request, &response, &routeContext](auto& routeMatcher) -> bool
+                            [&request, &routeContext](auto& routeMatcher) -> bool
                             {
-                                return routeMatcher(request, response, routeContext);
+                                return routeMatcher(request, routeContext);
                             }))
                     return;
                 processor(request, response, routeParams, routeContext);
@@ -167,7 +167,7 @@ private:
 
 private:
     std::vector<ProcessorFunc> processorList_;
-    std::vector<RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers_;
+    std::vector<RouteMatcherInvoker<TRequest, TRouteContext>> routeMatchers_;
     std::function<void(const TRequest&, TResponse&, const RouteParameterError&)> routeParameterErrorHandler_;
 };
 

@@ -175,7 +175,7 @@ private:
 
     Route& pathRouteImpl(
             const std::string& path,
-            std::vector<detail::RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers = {})
+            std::vector<detail::RouteMatcherInvoker<TRequest, TRouteContext>> routeMatchers = {})
     {
         auto routePath = detail::makePath(path, trailingSlashMode_);
         auto& routeMatch = routeMatchList_.emplace_back(
@@ -185,7 +185,7 @@ private:
 
     Route& regexRouteImpl(
             const rx& regExp,
-            std::vector<detail::RouteMatcherInvoker<TRequest, TResponse, TRouteContext>> routeMatchers = {})
+            std::vector<detail::RouteMatcherInvoker<TRequest, TRouteContext>> routeMatchers = {})
     {
         auto& routeMatch = routeMatchList_.emplace_back(RegExpRouteMatch{
                 detail::makeRegex(regExp, trailingSlashMode_),

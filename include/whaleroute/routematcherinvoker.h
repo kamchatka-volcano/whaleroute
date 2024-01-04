@@ -8,49 +8,47 @@
 
 namespace whaleroute::detail {
 
-template<typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
-bool match(const TArg& arg, const TRequest& request, TResponse& response)
+template<typename TRouteContext, typename TArg, typename TRequest>
+bool match(const TArg& arg, const TRequest& request)
 {
     using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
     if constexpr (
             !std::is_same_v<sfun::callable_return_type<RouteMatcher>, bool> ||
-            !(std::is_same_v<
-                      sfun::callable_args<RouteMatcher>,
-                      sfun::type_list<const TArg&, const TRequest&, TResponse&>> ||
-              std::is_same_v<sfun::callable_args<RouteMatcher>, sfun::type_list<TArg, const TRequest&, TResponse&>>)) {
+            !(std::is_same_v<sfun::callable_args<RouteMatcher>, sfun::type_list<const TArg&, const TRequest&>> ||
+              std::is_same_v<sfun::callable_args<RouteMatcher>, sfun::type_list<TArg, const TRequest&>>)) {
         static_assert(
                 sfun::dependent_false<RouteMatcher>,
                 "RouteMatcher<TRouter> functor must implement bool operator()(const TArg&, const "
-                "TRequest&, TResponse&)");
+                "TRequest&)");
     }
     else
-        return RouteMatcher{}(arg, request, response);
+        return RouteMatcher{}(arg, request);
 }
 
-template<typename TRouteContext, typename TArg, typename TRequest, typename TResponse>
-bool match(const TArg& arg, const TRequest& request, TResponse& response, TRouteContext& routeContext)
+template<typename TRouteContext, typename TArg, typename TRequest>
+bool match(const TArg& arg, const TRequest& request, TRouteContext& routeContext)
 {
     using RouteMatcher = config::RouteMatcher<TArg, TRouteContext>;
     if constexpr (
             !std::is_same_v<sfun::callable_return_type<RouteMatcher>, bool> ||
             !(std::is_same_v<
                       sfun::callable_args<RouteMatcher>,
-                      sfun::type_list<const TArg&, const TRequest&, TResponse&, TRouteContext&>> ||
+                      sfun::type_list<const TArg&, const TRequest&, const TRouteContext&>> ||
               std::is_same_v<
                       sfun::callable_args<RouteMatcher>,
-                      sfun::type_list<TArg, const TRequest&, TResponse&, TRouteContext&>>)) {
+                      sfun::type_list<TArg, const TRequest&, const TRouteContext&>>)) {
         static_assert(
                 sfun::dependent_false<RouteMatcher>,
                 "RouteMatcher<TRouter> functor must implement bool operator()(const TArg&, const "
-                "TRequest&, TResponse&, TRouteContext&)");
+                "TRequest&, TRouteContext&)");
     }
     else
-        return RouteMatcher{}(arg, request, response, routeContext);
+        return RouteMatcher{}(arg, request, routeContext);
 }
 
-template<typename TRequest, typename TResponse, typename TRouteContext>
+template<typename TRequest, typename TRouteContext>
 class RouteMatcherInvoker {
-    using ThisRouteMatcherInvoker = RouteMatcherInvoker<TRequest, TResponse, TRouteContext>;
+    using ThisRouteMatcherInvoker = RouteMatcherInvoker<TRequest, TRouteContext>;
 
 public:
     template<
@@ -64,25 +62,25 @@ public:
         if constexpr (!detail::IsCompleteType<RouteMatcher>::value)
             static_assert(
                     sfun::dependent_false<RouteMatcher>,
-                    "The implementation of the whaleroute::config::config::RouteMatcher<TRouter> functor "
+                    "The implementation of the whaleroute::config::config::RouteMatcher<TArg, TRouteContext> functor "
                     "must be provided");
 
-        predicate_ = [arg](const TRequest& request, TResponse& response, [[maybe_unused]] TRouteContext& routeContext)
+        predicate_ = [arg](const TRequest& request, [[maybe_unused]] TRouteContext& routeContext)
         {
             if constexpr (std::is_same_v<TRouteContext, _>)
-                return match<TRouteContext>(arg, request, response);
+                return match<TRouteContext>(arg, request);
             else
-                return match<TRouteContext>(arg, request, response, routeContext);
+                return match<TRouteContext>(arg, request, routeContext);
         };
     }
 
-    bool operator()(const TRequest& request, TResponse& response, TRouteContext& routeContext) const
+    bool operator()(const TRequest& request, TRouteContext& routeContext) const
     {
-        return predicate_(request, response, routeContext);
+        return predicate_(request, routeContext);
     }
 
 private:
-    std::function<bool(const TRequest&, TResponse&, TRouteContext&)> predicate_;
+    std::function<bool(const TRequest&, TRouteContext&)> predicate_;
 };
 
 } // namespace whaleroute::detail

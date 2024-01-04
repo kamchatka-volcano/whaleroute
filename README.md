@@ -12,10 +12,10 @@ different actions based on a string value from the request object, **whaleroute*
 
 * [Usage](#implementing-the-router)
   * [Implementing the router](#implementing-the-router)
-  * [Registering route matchers](#registering-route-matchers)
   * [Registering the response converter](#registering-the-response-converter)
   * [Matching multiple routes](#matching-multiple-routes)
   * [Registering the route context](#registering-the-route-context)
+  * [Registering route matchers](#registering-route-matchers)
   * [Using regular expressions](#using-regular-expressions)
   * [Trailing slash matching](#trailing-slash-matching)
   * [Processing unmatched requests](#processing-unmatched-requests)
@@ -95,39 +95,9 @@ struct Responder{
     router.process(request, response);
 ```
 
-#### Registering route matchers
-
-By default, routes are matched based on request paths. To include other matching attributes, you can register them by
-providing a specialization of the `whaleroute::config::RouteMatcher` class template. The `operator()` function within
-the specialization should take a matcher's value, request and response objects, and return a boolean result of comparing
-the matcher with some property of the request or response objects.
-
-```c++
-#include <whaleroute/routematcher.h>
-
-template<>
-struct RouteMatcher<Request::Method> {
-    bool operator()(Request::Method value, const Request& request, Response&) const
-    {
-        return value == request.method;
-    }
-};
-}
-
-```
-
-Now `Request::Method` can be specified in routes:
-
-```c++
-    auto router = Router{};
-    router.route("/", Request::Method::GET).process([](const Request& request, Response& response)){
-        response.send("HTTP/1.1 200 OK\r\n\r\n");
-    }); 
-```
-
 #### Registering the response converter
 
-To further simplify the setup of routes, it is possible to set the response value directly instead of registering a
+To simplify the setup of routes, it is possible to set the response value directly instead of registering a
 request processor object. To achieve this, it is necessary to register a response converter that sets the passed value
 to the response object. To do this, provide a callable structure with the following
 signature: `void(Response& response, const TValue& value)`, and pass it as the 3rd template argument
@@ -160,7 +130,7 @@ Now routes have the `set` method available:
 
 ```c++
     auto router = Router{};
-    router.route("/", Request::Method::GET).set("HTTP/1.1 200 OK\r\n\r\n");
+    router.route("/").set("HTTP/1.1 200 OK\r\n\r\n");
     //...
     router.process(request, response);
 ```
@@ -177,7 +147,7 @@ taking a reference to the response object.
     };
  
     auto router = Router{}; 
-    router.route("/", Request::Method::GET).process<Responder>();
+    router.route("/").process<Responder>();
     router.process(request, response);
 ```
 
@@ -216,7 +186,7 @@ class Router : public whaleroute::RequestRouter<Request, Response>{
     router.route(whaleroute::rx{".*"}, Request::Method::GET).process(const Request& request, Response&)){
       log(request);
     });
-    router.route("/", Request::Method::GET).process([](const Request&, Response& response)){
+    router.route("/").process([](const Request&, Response& response)){
       response.send("HTTP/1.1 200 OK\r\n\r\n");
     });
 ```
@@ -245,7 +215,7 @@ void authorize(const Request& request, Response&, Context& ctx)
 }
 
     router.route(whaleroute::rx{".*"}, Request::Method::POST).process(authorize);
-    router.route("/", Request::Method::GET).process([](const Request&, Response& response, const Context& ctx)){
+    router.route("/").process([](const Request&, Response& response, const Context& ctx)){
       if (ctx.isAuthorized)  
           response.send("HTTP/1.1 200 OK\r\n\r\n");
       else
@@ -254,8 +224,51 @@ void authorize(const Request& request, Response&, Context& ctx)
 
 ```
 
-*Notice how it's possible to skip using the value setter in this example by passing the empty type `whaleroute::_` in
+*Notice how it's possible to skip using the response converter in this example by passing the empty type `whaleroute::_`
+in
 its place.*
+
+#### Registering route matchers
+
+By default, routes are matched based on request paths. To include other matching attributes, you can register them by
+providing a specialization of the `whaleroute::config::RouteMatcher` class template. The `operator()` function within
+the specialization should take a matcher's value and the request object, and return a boolean result of comparing
+the matcher with some property of the request object.
+
+```c++
+#include <whaleroute/routematcher.h>
+
+template<>
+struct RouteMatcher<Request::Method> {
+    bool operator()(Request::Method value, const Request& request) const
+    {
+        return value == request.method;
+    }
+};
+}
+
+```
+
+Now `Request::Method` can be specified in routes:
+
+```c++
+    auto router = Router{};
+    router.route("/", Request::Method::GET).process([](const Request& request, Response& response)){
+        response.send("HTTP/1.1 200 OK\r\n\r\n");
+    }); 
+```
+
+When router has a registered context, it must be present in the route matcher specialization:
+
+```c++
+template<>
+struct RouteMatcher<Request::Method, Context> {
+    bool operator()(Request::Method value, const Request& request, const Context& ctx) const
+    {
+        return value == request.method;
+    }
+};
+```
 
 #### Using regular expressions
 

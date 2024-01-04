@@ -14,7 +14,7 @@ struct Context {
 namespace whaleroute::config {
 template<>
 struct RouteMatcher<RequestType, Context> {
-    bool operator()(const RequestType& value, const Request& request, Response&, Context&) const
+    bool operator()(const RequestType& value, const Request& request, const Context&) const
     {
         return value == request.type;
     }
