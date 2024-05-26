@@ -195,6 +195,7 @@ void invokeRequestProcessor(
                 {
                     auto callProcess = [&](const auto&... param)
                     {
+                        constexpr auto args = sfun::callable_args<TRequestProcessor>{};
                         constexpr auto paramsCount = getParamsCount<decltype(args), TRouteContext, ReturnType>();
                         if constexpr (std::is_same_v<ReturnType, void>) {
                             if constexpr (args.size() - paramsCount == 2)
