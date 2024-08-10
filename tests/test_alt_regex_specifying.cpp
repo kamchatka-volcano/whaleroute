@@ -143,10 +143,10 @@ TEST_F(AltRegexSpecifying, StringLiterals)
                     {
                         response.send("OK");
                     });
-    route(R"(/chapter/(.+)/page(\d+))"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(R"(/chapter_(.+)/page_(\d+))"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
+    route(R"(/chapter/(.+)/page(\d+)/)"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    route(R"(/chapter_(.+)/page_(\d+)/)"_rx, RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(R"(/chapter_(.+))"_rx, RequestType::GET).process(parametrizedProcessor);
+    route(R"(/chapter_(.+)/)"_rx, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
     route(R"(/files/(.*\.xml))"_rx, RequestType::GET)
             .process(

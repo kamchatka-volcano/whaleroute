@@ -151,6 +151,37 @@ struct IncrementContext {
     }
 };
 
+struct NoResponseRequestProcessor{
+    void operator()(const Request&)
+    {
+        testNumber++;
+    }
+    int testNumber = 0;
+};
+
+struct ParametrizedNoResponseRequestProcessor{
+    void operator()(int param, const Request&)
+    {
+        testNumber += param;
+    }
+    int testNumber = 0;
+};
+
+struct AltIncrementContext {
+    void operator()(const Request&, Context& context)
+    {
+        context.counter++;
+    }
+};
+
+struct ParametrizedAltIncrementContext {
+    void operator()(int param, const Request&, Context& context)
+    {
+        context.counter += param;
+    }
+};
+
+
 struct SendContext {
     void operator()(const Request&, Response& response, const Context& context)
     {
@@ -185,17 +216,17 @@ TEST_F(Router, Matching)
                     {
                         response.send("OK");
                     });
-    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}, RequestType::GET)
+    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+)/)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+)/)"}, RequestType::GET)
             .process<ChapterNamePageIndexProcessor>("TestBook");
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+))"}, RequestType::GET).process<BookProcessor>();
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+))"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+)/)"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/)"}, RequestType::GET).process<BookProcessor>();
     route(whaleroute::rx{R"(/book/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
-    route(whaleroute::rx{R"(/book/(\w+)/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    route(whaleroute::rx{R"(/book/(\w+)/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
     route(whaleroute::rx{R"(/no_capture_groups)"}, RequestType::GET).process<BookProcessorForAnyParams>();
     route("/no_capture_groups2", RequestType::GET).process<BookProcessorForAnyParams>();
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(whaleroute::rx{R"(/chapter_(.+))"}, RequestType::GET).process(parametrizedProcessor);
+    route(whaleroute::rx{R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
     route(whaleroute::rx{R"(/files/(.*\.xml))"}, RequestType::GET)
             .process(
@@ -289,6 +320,31 @@ TEST_F(Router, Matching)
 
     processRequest("/test/context");
     checkResponse("test: 1");
+}
+
+TEST_F(Router, RequestProcessorWithoutResponse)
+{
+    auto noResponseRequestProcessor = NoResponseRequestProcessor{};
+    auto parametrizedNoResponseRequestProcessor = ParametrizedNoResponseRequestProcessor{};
+    route("/context/").process<AltIncrementContext>();
+    auto paramRequestProcessor = ParametrizedAltIncrementContext{};
+    route(whaleroute::rx{"/context/param/(\\d+)"}).process(paramRequestProcessor);
+    route("/test").process(noResponseRequestProcessor);
+    route(R"(/test/(\d+)/)"_rx).process(parametrizedNoResponseRequestProcessor);
+    route(R"(/context/.*)"_rx, RequestType::GET)
+            .process(
+                    [](const Request&, Response& response, Context& context)
+                    {
+                        response.send(std::to_string(context.counter));
+                    });
+    processRequest("/context/");
+    checkResponse("1");
+    processRequest("/test");
+    EXPECT_EQ(noResponseRequestProcessor.testNumber, 1);
+    processRequest("/test/3");
+    EXPECT_EQ(parametrizedNoResponseRequestProcessor.testNumber, 3);
+    processRequest("/context/param/2");
+    checkResponse("2");
 }
 
 TEST_F(Router, DefaultUnmatchedRequestHandler)

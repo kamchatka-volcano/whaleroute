@@ -115,14 +115,34 @@ private:
         return [&](const RegExpRouteMatch& match) -> std::vector<std::function<bool(TRouteContext&)>>
         {
             auto matchList = std::smatch{};
-            const auto requestPath = detail::makePath(this->getRequestPath(request), trailingSlashMode_);
-            if (!std::regex_match(requestPath, matchList, match.regExp))
-                return {};
+            const auto requestPath = this->getRequestPath(request);
 
-            auto routeParams = std::vector<std::string>{};
-            for (auto i = 1u; i < matchList.size(); ++i)
-                routeParams.push_back(matchList[i].str());
-            return makeRequestProcessorInvokerList(match.route.getRequestProcessors(), request, response, routeParams);
+            const auto getAlternativeTrailingSlashPath = [](const std::string& requestPath) -> std::string
+            {
+                if (sfun::ends_with(requestPath, "/"))
+                    return {requestPath.begin(), std::prev(requestPath.end())};
+                return requestPath + "/";
+            };
+
+            auto [result, routeParams] = detail::matchRegex(requestPath, match.regExp);
+            if (result)
+                return makeRequestProcessorInvokerList(
+                        match.route.getRequestProcessors(),
+                        request,
+                        response,
+                        routeParams);
+
+            if (trailingSlashMode_ == TrailingSlashMode::Optional && requestPath != "/") {
+                auto [retryResult, retryRouteParams] =
+                        detail::matchRegex(getAlternativeTrailingSlashPath(requestPath), match.regExp);
+                if (retryResult)
+                    return makeRequestProcessorInvokerList(
+                            match.route.getRequestProcessors(),
+                            request,
+                            response,
+                            retryRouteParams);
+            }
+            return {};
         };
     }
 

@@ -43,23 +43,22 @@ inline std::string makePath(const std::string& path, TrailingSlashMode mode)
     return path;
 }
 
-inline std::regex makeRegex(const rx& regExp, TrailingSlashMode mode)
+inline std::regex makeRegex(const rx& regExp, TrailingSlashMode)
 {
-    if (mode == TrailingSlashMode::Strict)
-        return std::regex{regExp.value};
-
-    auto rxVal = regExp.value;
-    if (sfun::ends_with(rxVal, "/")) {
-        rxVal.pop_back();
-        return std::regex{rxVal};
-    }
-    else if (sfun::ends_with(rxVal, "/)")) {
-        rxVal[rxVal.size() - 1] = '?';
-        rxVal += ')';
-        return std::regex{rxVal};
-    }
-    return std::regex{rxVal};
+    return std::regex{regExp.value};
 }
+
+inline std::tuple<bool, std::vector<std::string>> matchRegex(const std::string& path, const std::regex& regExp)
+{
+    auto matchList = std::smatch{};
+    if (!std::regex_match(path, matchList, regExp))
+        return {false, {}};
+
+    auto routeParams = std::vector<std::string>{};
+    for (auto i = 1u; i < matchList.size(); ++i)
+        routeParams.push_back(matchList[i].str());
+    return {true, std::move(routeParams)};
+};
 
 } // namespace whaleroute::detail
 

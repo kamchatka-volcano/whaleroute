@@ -184,17 +184,17 @@ TEST_F(RouterAltRequestProcessor, Matching)
                     {
                         response.send("OK");
                     });
-    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}, RequestType::GET)
+    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+)/)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+)/)"}, RequestType::GET)
             .process<ChapterNamePageIndexProcessor>("TestBook");
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+))"}, RequestType::GET).process<BookProcessor>();
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+))"}, RequestType::GET).process<BookProcessor>();
-    route(whaleroute::rx{R"(/book/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
-    route(whaleroute::rx{R"(/book/(\w+)/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+)/)"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/)"}, RequestType::GET).process<BookProcessor>();
+    route(whaleroute::rx{R"(/book/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    route(whaleroute::rx{R"(/book/(\w+)/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
     route(whaleroute::rx{R"(/no_capture_groups)"}, RequestType::GET).process<BookProcessorForAnyParams>();
     route("/no_capture_groups2", RequestType::GET).process<BookProcessorForAnyParams>();
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(whaleroute::rx{R"(/chapter_(.+))"}, RequestType::GET).process(parametrizedProcessor);
+    route(whaleroute::rx{R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
     route(whaleroute::rx{R"(/files/(.*\.xml))"}, RequestType::GET)
             .process(
