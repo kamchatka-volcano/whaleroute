@@ -53,7 +53,7 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DENABLE_TESTS=ON --preset="${{ matrix.config.cmake-preset }}"
+      run: cmake -B ${{github.workspace}}/build -DENABLE_TESTS=ON -DENABLE_TESTS_CPP20=ON --preset="${{ matrix.config.cmake-preset }}"
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build

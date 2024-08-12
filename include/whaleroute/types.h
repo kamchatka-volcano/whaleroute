@@ -1,12 +1,38 @@
 #ifndef WHALEROUTE_TYPES_H
 #define WHALEROUTE_TYPES_H
 
+#include <algorithm>
+#include <array>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
 namespace whaleroute {
+
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (!defined(_MSVC_LANG) && __cplusplus >= 202002L)
+namespace detail {
+
+template<size_t bytesCount>
+struct StaticString {
+    char data[bytesCount];
+    constexpr size_t size() const
+    {
+        return bytesCount - 1;
+    }
+    constexpr std::string_view str() const
+    {
+        return {data, size()};
+    }
+    constexpr StaticString(const char (&init)[bytesCount])
+    {
+        std::copy_n(init, bytesCount, data);
+    }
+};
+
+} //namespace detail
+
+#endif
 
 struct _ {};
 
@@ -20,9 +46,6 @@ enum class TrailingSlashMode {
     Strict
 };
 
-struct rx {
-    std::string value;
-};
 
 namespace detail {
 struct RouteParameters {
@@ -44,13 +67,6 @@ struct RouteParameterReadError {
     std::string value;
 };
 using RouteParameterError = std::variant<RouteParameterCountMismatch, RouteParameterReadError>;
-
-namespace string_literals {
-inline rx operator""_rx(const char* args, std::size_t size)
-{
-    return {std::string(args, size)};
-}
-} // namespace string_literals
 
 } // namespace whaleroute
 

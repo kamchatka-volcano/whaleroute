@@ -139,7 +139,7 @@ auto readRouteParams(const std::vector<std::string>& routeParams)
         return params;
     }
     else {
-        if (paramsSize > routeParams.size())
+        if (paramsSize != routeParams.size())
             return RouteParameterCountMismatch{paramsSize, static_cast<int>(routeParams.size())};
 
         return makeParams<ParamsTuple>(routeParams);
@@ -177,6 +177,7 @@ constexpr int getParamsCount()
 }
 
 template<
+        auto checkParam,
         typename TResponseConverter,
         typename TRequestProcessor,
         typename TRequest,
@@ -216,6 +217,28 @@ void invokeRequestProcessor(
         }
     }
     else {
+        if constexpr (!std::is_same_v<decltype(checkParam), std::nullptr_t>) {
+
+            constexpr auto paramsTuple =
+                    sfun::decay_tuple_t<sfun::to_type_id_tuple_t<decltype(args.template slice<0, paramsCount>())>>{};
+            constexpr auto isAnyRouteParameters = std::tuple_size_v<decltype(paramsTuple)> == 1 &&
+                    std::is_base_of_v<detail::RouteParameters,
+                                      typename std::tuple_element_t<0, decltype(paramsTuple)>::type>;
+
+            if constexpr (!isAnyRouteParameters) {
+                constexpr auto requestProcessorParams = sfun::type_list{paramsTuple};
+                if constexpr (std::is_same_v<decltype(checkParam), int>){
+                    static_assert(
+                            requestProcessorParams.size() == checkParam,
+                            "Request processor has a mismatched number of route parameters and route's regular expression capture groups.");
+                }
+                else {
+                    static_assert(
+                            requestProcessorParams == checkParam,
+                            "Request processor can't be invoked with route parameters");
+                }
+            }
+        }
         auto paramsResult = readRouteParams<decltype(args), paramsCount>(routeParams);
         auto paramsResultVisitor = sfun::overloaded{
                 [&](const RouteParameterError& error)

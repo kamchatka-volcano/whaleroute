@@ -163,7 +163,7 @@ TEST_F(MultipleRouteMatchersWithContext, Default)
 
 TEST_F(MultipleRouteMatchersWithContext, ContextMatching)
 {
-    route(whaleroute::rx{".+"})
+    routeRegex(".+")
             .process(
                     [](const Request&, Response&, Context& ctx)
                     {

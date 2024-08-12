@@ -119,7 +119,7 @@ TEST_F(RouterWithoutRouteMatchers, Matching)
             {
                 response.send("Default page");
             });
-    route(whaleroute::rx{R"(/page\d*)"})
+    routeRegex({R"(/page\d*)"})
             .process(
                     [](const Request&, Response& response)
                     {
@@ -130,12 +130,12 @@ TEST_F(RouterWithoutRouteMatchers, Matching)
             {
                 response.send("OK");
             });
-    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+))"}).process<ChapterNamePageIndexProcessor>();
-    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+))"}).process<ChapterNamePageIndexProcessor>("TestBook");
+    routeRegex({R"(/chapter/(.+)/page(\d+))"}).process<ChapterNamePageIndexProcessor>();
+    routeRegex({R"(/chapter_(.+)/page_(\d+))"}).process<ChapterNamePageIndexProcessor>("TestBook");
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(whaleroute::rx{R"(/chapter_(.+)/)"}).process(parametrizedProcessor);
+    routeRegex({R"(/chapter_(.+)/)"}).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(whaleroute::rx{R"(/files/(.*\.xml))"})
+    routeRegex({R"(/files/(.*\.xml))"})
             .process(
                     [](const std::string& fileName, const Request&, Response& response)
                     {
@@ -190,7 +190,7 @@ TEST_F(RouterWithoutRouteMatchers, DefaultUnmatchedRequestHandler)
 
 TEST_F(RouterWithoutRouteMatchers, MultipleRoutesMatching)
 {
-    route(whaleroute::rx{"/greet/.*"})
+    routeRegex({"/greet/.*"})
             .process(
                     [](const Request&, Response& response)
                     {
@@ -204,7 +204,7 @@ TEST_F(RouterWithoutRouteMatchers, MultipleRoutesMatching)
                         response.state->wasSent = true;
                     });
     auto testState = std::string{};
-    route(whaleroute::rx{"/thank/.*"})
+    routeRegex({"/thank/.*"})
             .process(
                     [](const Request&, Response& response)
                     {
@@ -308,8 +308,8 @@ TEST_F(RouterWithoutRouteMatchers, SameParametrizedProcessorObjectUsedInMultiple
 {
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
-    route(whaleroute::rx{"/test/(.+)"}).process(counterProcessor);
-    route(whaleroute::rx{"/test2/(.+)"}).process(counterProcessor);
+    routeRegex({"/test/(.+)"}).process(counterProcessor);
+    routeRegex({"/test2/(.+)"}).process(counterProcessor);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");
@@ -321,8 +321,8 @@ TEST_F(RouterWithoutRouteMatchers, SameParametrizedProcessorObjectUsedInMultiple
 TEST_F(RouterWithoutRouteMatchers, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
-    route(whaleroute::rx{"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
-    route(whaleroute::rx{"/test2/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
+    routeRegex({"/test/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
+    routeRegex({"/test2/(.+)"}).process<ParametrizedCounterRouteProcessor>(state);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");

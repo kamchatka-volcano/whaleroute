@@ -1,7 +1,6 @@
 #ifndef WHALEROUTE_ROUTE_H
 #define WHALEROUTE_ROUTE_H
 
-#include "irequestrouter.h"
 #include "requestprocessor.h"
 #include "routematcherinvoker.h"
 #include "types.h"
@@ -19,7 +18,7 @@ class RequestRouter;
 
 namespace whaleroute::detail {
 
-template<typename TRequest, typename TResponse, typename TResponseConverter, typename TRouteContext>
+template<typename TRequest, typename TResponse, typename TResponseConverter, typename TRouteContext, auto checkParam>
 class Route {
     using ProcessorFunc =
             std::function<void(const TRequest&, TResponse&, const std::vector<std::string>&, TRouteContext&)>;
@@ -46,7 +45,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext) mutable
                     {
-                        invokeRequestProcessor<TResponseConverter>(
+                        invokeRequestProcessor<checkParam, TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,
@@ -64,7 +63,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor<TResponseConverter>(
+                        invokeRequestProcessor<checkParam, TResponseConverter>(
                                 *requestProcessor,
                                 request,
                                 response,
@@ -87,7 +86,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor<TResponseConverter>(
+                        invokeRequestProcessor<checkParam, TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,
@@ -104,7 +103,7 @@ public:
                             const std::vector<std::string>& routeParams,
                             TRouteContext& routeContext)
                     {
-                        invokeRequestProcessor<TResponseConverter>(
+                        invokeRequestProcessor<checkParam, TResponseConverter>(
                                 requestProcessor,
                                 request,
                                 response,

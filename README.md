@@ -183,7 +183,7 @@ class Router : public whaleroute::RequestRouter<Request, Response>{
 };
 
     auto router = Router{};
-    router.route(whaleroute::rx{".*"}, Request::Method::GET).process(const Request& request, Response&)){
+    router.route(whaleroute::Regex{".*"}, Request::Method::GET).process(const Request& request, Response&)){
       log(request);
     });
     router.route("/").process([](const Request&, Response& response)){
@@ -214,7 +214,7 @@ void authorize(const Request& request, Response&, Context& ctx)
     ctx.isAuthorized = true;
 }
 
-    router.route(whaleroute::rx{".*"}, Request::Method::POST).process(authorize);
+    router.route(whaleroute::Regex{".*"}, Request::Method::POST).process(authorize);
     router.route("/").process([](const Request&, Response& response, const Context& ctx)){
       if (ctx.isAuthorized)  
           response.send("HTTP/1.1 200 OK\r\n\r\n");
@@ -275,7 +275,7 @@ struct RouteMatcher<Request::Method, Context> {
 The `route` method of the Router can accept a regular expression instead of a string to specify the path of the route:
 
 ```c++
-router.route(whaleroute::rx{"/.*"}, Request::Method::GET).set("HTTP/1.1 200 OK\r\n\r\n");
+router.route(whaleroute::Regex{"/.*"}, Request::Method::GET).set("HTTP/1.1 200 OK\r\n\r\n");
 ```
 
 Currently, the regular expressions use the standard C++ library with ECMAScript grammar.
@@ -288,7 +288,7 @@ void showPage(int pageNumber, const Request&, Response& response)
 {
     response.send("page" + std::to_string(pageNumber));
 }
-router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+router.route(whaleroute::Regex{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
 ```
 
 The conversion of strings from the capturing groups to the parameters of the request processor is performed using the
@@ -312,7 +312,7 @@ void showPage(PageNumber pageNumber, const Request&, Response& response)
 {
     response.send("page" + std::to_string(pageNumber.value));
 }
-router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+router.route(whaleroute::Regex{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
 ```
 
 When the regular expression of a route is set dynamically, you may need to capture an arbitrary number of parameters. In
@@ -327,8 +327,8 @@ void showBook(const RouteParameters<>& bookIds, const Request&, Response& respon
     if (bookIds.value.size() == 2)
         response.send("book" + std::to_string(bookIds.value.at(0)) + std::to_string(bookIds.value.at(1)));
 }
-router.route(whaleroute::rx{"/book/(\\d+)/(\\d+)"}, Request::Method::GET).process(showBook);
-router.route(whaleroute::rx{"/book/(\\d+)"}, Request::Method::GET).process(showBook);
+router.route(whaleroute::Regex{"/book/(\\d+)/(\\d+)"}, Request::Method::GET).process(showBook);
+router.route(whaleroute::Regex{"/book/(\\d+)"}, Request::Method::GET).process(showBook);
 ```
 
 If capturing the string array is more suitable for your request processor, you can use `RouteParameters` with a specific
@@ -339,7 +339,7 @@ void showPage(const RouteParameters<1>& pageNumber, const Request&, Response& re
 {
     response.send("page" + pageNumber.value().at(0));
 }
-router.route(whaleroute::rx{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
+router.route(whaleroute::Regex{"/page/(\\d+)"}, Request::Method::GET).process(showPage);
 ```
 
 #### Trailing slash matching

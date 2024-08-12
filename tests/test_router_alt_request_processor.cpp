@@ -159,11 +159,9 @@ struct SendContext {
 
 } // namespace
 
-using namespace whaleroute::string_literals;
-
 TEST_F(RouterAltRequestProcessor, Matching)
 {
-    route(whaleroute::rx{".+"}).process<IncrementContext>();
+    routeRegex(".+").process<IncrementContext>();
     route("/", RequestType::GET).process<GreeterPageProcessor>();
     route("/moon", RequestType::GET).process<GreeterPageProcessor>("Moon");
     route("/page0", RequestType::GET)
@@ -172,7 +170,7 @@ TEST_F(RouterAltRequestProcessor, Matching)
                     {
                         response.send("Default page");
                     });
-    route(whaleroute::rx{R"(/page\d*)"}, RequestType::GET)
+    routeRegex({R"(/page\d*)"}, RequestType::GET)
             .process(
                     [](const Request&, Response& response)
                     {
@@ -184,19 +182,19 @@ TEST_F(RouterAltRequestProcessor, Matching)
                     {
                         response.send("OK");
                     });
-    route(whaleroute::rx{R"(/chapter/(.+)/page(\d+)/)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
-    route(whaleroute::rx{R"(/chapter_(.+)/page_(\d+)/)"}, RequestType::GET)
+    routeRegex({R"(/chapter/(.+)/page(\d+)/)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    routeRegex({R"(/chapter_(.+)/page_(\d+)/)"}, RequestType::GET)
             .process<ChapterNamePageIndexProcessor>("TestBook");
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/page/(\d+)/)"}, RequestType::GET).process<BookProcessor>();
-    route(whaleroute::rx{R"(/book-(.+)/chapter/(.+)/)"}, RequestType::GET).process<BookProcessor>();
-    route(whaleroute::rx{R"(/book/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
-    route(whaleroute::rx{R"(/book/(\w+)/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
-    route(whaleroute::rx{R"(/no_capture_groups)"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    routeRegex({R"(/book-(.+)/chapter/(.+)/page/(\d+)/)"}, RequestType::GET).process<BookProcessor>();
+    routeRegex({R"(/book-(.+)/chapter/(.+)/)"}, RequestType::GET).process<BookProcessor>();
+    routeRegex({R"(/book/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    routeRegex({R"(/book/(\w+)/(\w+)/)"}, RequestType::GET).process<BookProcessorForAnyParams>();
+    routeRegex({R"(/no_capture_groups)"}, RequestType::GET).process<BookProcessorForAnyParams>();
     route("/no_capture_groups2", RequestType::GET).process<BookProcessorForAnyParams>();
     auto parametrizedProcessor = ChapterNameProcessor{};
-    route(whaleroute::rx{R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
+    routeRegex({R"(/chapter_(.+)/)"}, RequestType::GET).process(parametrizedProcessor);
     route("/param_error").process(parametrizedProcessor);
-    route(whaleroute::rx{R"(/files/(.*\.xml))"}, RequestType::GET)
+    routeRegex({R"(/files/(.*\.xml))"}, RequestType::GET)
             .process(
                     [](const std::string& fileName, const Request&, Response& response)
                     {
@@ -211,7 +209,7 @@ TEST_F(RouterAltRequestProcessor, Matching)
                     });
     route("/context2", RequestType::GET).process<SendContext>();
 
-    route(whaleroute::rx{"/(.+)/context"}, RequestType::GET)
+    routeRegex({"/(.+)/context"}, RequestType::GET)
             .process(
                     [](const std::string& title, const Request&, Response& response, Context& context)
                     {
@@ -301,7 +299,7 @@ TEST_F(RouterAltRequestProcessor, DefaultUnmatchedRequestHandler)
 
 TEST_F(RouterAltRequestProcessor, MultipleRoutesMatching)
 {
-    route(whaleroute::rx{"/greet/.*"}, RequestType::GET)
+    routeRegex({"/greet/.*"}, RequestType::GET)
             .process(
                     [](const Request&, Response& response)
                     {
@@ -315,7 +313,7 @@ TEST_F(RouterAltRequestProcessor, MultipleRoutesMatching)
                         response.state->wasSent = true;
                     });
     auto testState = std::string{};
-    route(whaleroute::rx{"/thank/.*"}, RequestType::GET)
+    routeRegex({"/thank/.*"}, RequestType::GET)
             .process(
                     [](const Request&, Response& response)
                     {
@@ -419,8 +417,8 @@ TEST_F(RouterAltRequestProcessor, SameParametrizedProcessorObjectUsedInMultipleR
 {
     int state = 0;
     auto counterProcessor = ParametrizedCounterRouteProcessor{state};
-    route(whaleroute::rx{"/test/(.+)"}, RequestType::GET).process(counterProcessor);
-    route(whaleroute::rx{"/test2/(.+)"}, RequestType::GET).process(counterProcessor);
+    routeRegex({"/test/(.+)"}, RequestType::GET).process(counterProcessor);
+    routeRegex({"/test2/(.+)"}, RequestType::GET).process(counterProcessor);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");
@@ -432,8 +430,8 @@ TEST_F(RouterAltRequestProcessor, SameParametrizedProcessorObjectUsedInMultipleR
 TEST_F(RouterAltRequestProcessor, SameParametrizedProcessorTypeCreatedInMultipleRoutes)
 {
     int state = 0;
-    route(whaleroute::rx{"/test/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
-    route(whaleroute::rx{"/test2/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
+    routeRegex({"/test/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
+    routeRegex({"/test2/(.+)"}, RequestType::GET).process<ParametrizedCounterRouteProcessor>(state);
 
     processRequest("/test/foo");
     checkResponse("TEST foo");
