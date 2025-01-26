@@ -1,6 +1,7 @@
 #ifndef WHALEROUTE_STRINGCONVERTER_H
 #define WHALEROUTE_STRINGCONVERTER_H
 
+#include "external/sfun/type_traits.h"
 #include <optional>
 #include <sstream>
 #include <string>
@@ -15,10 +16,17 @@ struct StringConverter {
             return data;
         }
         else {
-            auto value = T{};
             auto stream = std::stringstream{data};
-            stream >> value;
-
+            auto value = T{};
+            if constexpr (sfun::is_optional_v<T>) {
+                if (data.empty())
+                    return value;
+                value.emplace();
+                stream >> value.value();
+            }
+            else {
+                stream >> value;
+            }
             if (stream.bad() || stream.fail() || !stream.eof())
                 return {};
             return value;

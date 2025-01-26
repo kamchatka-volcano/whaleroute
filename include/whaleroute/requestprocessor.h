@@ -103,7 +103,7 @@ auto makeParams(const std::vector<std::string>& routeParams) -> std::variant<TPa
 
         const auto& param = routeParams.at(i++);
         auto paramValue = detail::convertFromString<std::decay_t<decltype(val)>>(param);
-        if (paramValue)
+        if (paramValue.has_value())
             val = *paramValue;
         else
             error = RouteParameterReadError{i, param};

@@ -196,6 +196,24 @@ private:
     std::string title_;
 };
 
+class OptionalChapterNamePageIndexProcessor {
+public:
+    OptionalChapterNamePageIndexProcessor(std::string title = {})
+        : title_{std::move(title)}
+    {
+    }
+
+    void operator()(const std::optional<std::string>& chapterName, std::optional<int> pageIndex, const Request&, Response& response)
+    {
+        response.send(
+                title_ + (title_.empty() ? "" : " ") + "Chapter: " + chapterName.value_or("no-chapter") + ", page[" +
+                std::to_string(pageIndex.value_or(0)) + "]");
+    }
+
+private:
+    std::string title_;
+};
+
 struct BookProcessor {
     void operator()(const whaleroute::RouteParameters<3>& params, const Request&, Response& response)
     {
@@ -299,6 +317,8 @@ TEST_F(Router, Matching)
     routeRegex({R"(/chapter/(.+)/page(\d+)/)"}, RequestType::GET).process<ChapterNamePageIndexProcessor>();
     routeRegex({R"(/chapter_(.+)/page_(\d+)/)"}, RequestType::GET)
             .process<ChapterNamePageIndexProcessor>("TestBook");
+    routeRegex(R"(/optional-chapter/(.+)?/page(\d+)?/)", RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
+    routeRegex(R"(/optional-chapter2(?:/(\w+))?(?:/(\d+))?/)", RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
     routeRegex({R"(/book-(.+)/chapter/(.+)/page/(\d+)/)"}, RequestType::GET).process<BookProcessor>();
     routeRegex({R"(/book-(.+)/chapter/(.+)/)"}, RequestType::GET).process<BookProcessor>();
     routeRegex({R"(/book/(\w+))"}, RequestType::GET).process<BookProcessorForAnyParams>();
@@ -315,6 +335,13 @@ TEST_F(Router, Matching)
                         auto fileContent = std::string{"XML file: " + fileName};
                         response.send(fileContent);
                     });
+    routeRegex(R"(/files-optional/(.*\.xml)?)", RequestType::GET)
+        .process(
+                [](const std::optional<std::string>& fileName, const Request&, Response& response)
+                {
+                    auto fileContent = std::string{"file: " + fileName.value_or("empty")};
+                    response.send(fileContent);
+                });
     route("/context", RequestType::GET)
             .process(
                     [](const Request&, Response& response, Context& context)
@@ -329,6 +356,12 @@ TEST_F(Router, Matching)
                     {
                         response.send(title + ": " + std::to_string(context.counter));
                     });
+    routeRegex("(?:/(.+))?/optional-context", RequestType::GET)
+        .process(
+                [](const std::optional<std::string>& title, const Request&, Response& response, Context& context)
+                {
+                    response.send(title.value_or("no-title") + ": " + std::to_string(context.counter));
+                });
 
     route().set("404");
 
@@ -389,6 +422,12 @@ TEST_F(Router, Matching)
     processRequest("/files/test.xml1");
     checkResponse("404");
 
+    processRequest("/files-optional/test.xml");
+    checkResponse("file: test.xml");
+
+    processRequest("/files-optional/");
+    checkResponse("file: empty");
+
     processRequest("/foo");
     checkResponse("404");
 
@@ -400,6 +439,30 @@ TEST_F(Router, Matching)
 
     processRequest("/test/context");
     checkResponse("test: 1");
+
+    processRequest("/test/optional-context");
+    checkResponse("test: 1");
+
+    processRequest("/optional-context");
+    checkResponse("no-title: 1");
+
+    processRequest("/optional-chapter/test/page123");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/test/page");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/test/123/");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter2/123/");
+    checkResponse("Chapter: 123, page[0]");
+
+    processRequest("/optional-chapter2/test/");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/");
+    checkResponse("Chapter: no-chapter, page[0]");
 }
 
 TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
@@ -427,6 +490,8 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
                     });
     route("/chapter/{str}/page{int}/", RequestType::GET).process<ChapterNamePageIndexProcessor>();
     route("/chapter_{str}/page_{int}/", RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
+    route("/optional-chapter/{str}?/page{int}?/", RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
+    route("/optional-chapter2/{str}?/{int}?/", RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
     route("/book-{str}/chapter/{str}/page/{int}", RequestType::GET).process<BookProcessor>();
     route("/book-{str}/chapter/{str}/", RequestType::GET).process<BookProcessor>();
     route("/book/{str}/", RequestType::GET).process<BookProcessorForAnyParams>();
@@ -440,6 +505,13 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
                     [](const std::string& fileName, const Request&, Response& response)
                     {
                         auto fileContent = std::string{"XML file: " + fileName};
+                        response.send(fileContent);
+                    });
+    route("/files-optional/{str}?", RequestType::GET)
+            .process(
+                    [](const std::optional<std::string>& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"file: " + fileName.value_or("empty")};
                         response.send(fileContent);
                     });
     route("/context", RequestType::GET)
@@ -456,6 +528,13 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
                     {
                         response.send(title + ": " + std::to_string(context.counter));
                     });
+
+    route("/{str}?/optional-context", RequestType::GET)
+        .process(
+                [](const std::optional<std::string>& title, const Request&, Response& response, Context& context)
+                {
+                    response.send(title.value_or("no-title") + ": " + std::to_string(context.counter));
+                });
 
     route().set("404");
 
@@ -483,6 +562,30 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
 
     processRequest("/chapter_test/page_123");
     checkResponse("TestBook Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/test/page123");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/page123");
+    checkResponse("Chapter: no-chapter, page[123]");
+
+    processRequest("/optional-chapter/test/page");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter/page");
+    checkResponse("Chapter: no-chapter, page[0]");
+
+    processRequest("/optional-chapter2/test/123/");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter2/123/");
+    checkResponse("Chapter: 123, page[0]");
+
+    processRequest("/optional-chapter2/test/");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/");
+    checkResponse("Chapter: no-chapter, page[0]");
 
     processRequest("/book-Hello_world/chapter/test/page/123");
     checkResponse("Book: Hello_world, Chapter: test, page[123]");
@@ -513,6 +616,12 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
     processRequest("/files/test.xml1");
     checkResponse("404");
 
+    processRequest("/files-optional/test.xml");
+    checkResponse("file: test.xml");
+
+    processRequest("/files-optional/");
+    checkResponse("file: empty");
+
     processRequest("/foo");
     checkResponse("404");
 
@@ -524,6 +633,12 @@ TEST_F(RouterWithRouteParams, MatchingWithRouteParams)
 
     processRequest("/test/context");
     checkResponse("test: 1");
+
+    processRequest("/test/optional-context");
+    checkResponse("test: 1");
+
+    processRequest("/optional-context");
+    checkResponse("no-title: 1");
 }
 
 #if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (!defined(_MSVC_LANG) && __cplusplus >= 202002L)
@@ -554,6 +669,8 @@ TEST_F(Router, MatchingRegex_CPP20)
     routeRegex<R"(/chapter/(.+)/page(\d+)/)">(RequestType::GET).process<ChapterNamePageIndexProcessor>();
     routeRegex<R"(/chapter_(.+)/page_(\d+)/)">(RequestType::GET)
             .process<ChapterNamePageIndexProcessor>("TestBook");
+    routeRegex<R"(/optional-chapter/(.+)?/page(\d+)?/)">(RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
+    routeRegex<R"(/optional-chapter2(?:/(\w+))?(?:/(\d+))?/)">(RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
     routeRegex<R"(/book-(.+)/chapter/(.+)/page/(\d+)/)">(RequestType::GET).process<BookProcessor>();
     routeRegex<R"(/book-(.+)/chapter/(.+)/)">(RequestType::GET).process<BookProcessor>();
     routeRegex<R"(/book/(\w+))">(RequestType::GET).process<BookProcessorForAnyParams>();
@@ -570,6 +687,13 @@ TEST_F(Router, MatchingRegex_CPP20)
                         auto fileContent = std::string{"XML file: " + fileName};
                         response.send(fileContent);
                     });
+    routeRegex<R"(/files-optional/(.*\.xml)?)">(RequestType::GET)
+    .process(
+            [](const std::optional<std::string>& fileName, const Request&, Response& response)
+            {
+                auto fileContent = std::string{"file: " + fileName.value_or("empty")};
+                response.send(fileContent);
+            });
     route("/context", RequestType::GET)
             .process(
                     [](const Request&, Response& response, Context& context)
@@ -584,7 +708,12 @@ TEST_F(Router, MatchingRegex_CPP20)
                     {
                         response.send(title + ": " + std::to_string(context.counter));
                     });
-
+    routeRegex("(?:/(.+))?/optional-context", RequestType::GET)
+        .process(
+                [](const std::optional<std::string>& title, const Request&, Response& response, Context& context)
+                {
+                    response.send(title.value_or("no-title") + ": " + std::to_string(context.counter));
+                });
     route().set("404");
 
     processRequest("/");
@@ -644,6 +773,12 @@ TEST_F(Router, MatchingRegex_CPP20)
     processRequest("/files/test.xml1");
     checkResponse("404");
 
+    processRequest("/files-optional/test.xml");
+    checkResponse("file: test.xml");
+
+    processRequest("/files-optional/");
+    checkResponse("file: empty");
+
     processRequest("/foo");
     checkResponse("404");
 
@@ -655,6 +790,30 @@ TEST_F(Router, MatchingRegex_CPP20)
 
     processRequest("/test/context");
     checkResponse("test: 1");
+
+    processRequest("/test/optional-context");
+    checkResponse("test: 1");
+
+    processRequest("/optional-context");
+    checkResponse("no-title: 1");
+
+    processRequest("/optional-chapter/test/page123");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/test/page");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/test/123/");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter2/123/");
+    checkResponse("Chapter: 123, page[0]");
+
+    processRequest("/optional-chapter2/test/");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/");
+    checkResponse("Chapter: no-chapter, page[0]");
 }
 
 namespace whaleroute::config {
@@ -692,6 +851,8 @@ TEST_F(Router, Matching_Path_CPP20)
                         response.send("OK");
                     });
     route<"/chapter/{str}/page{int}/">(RequestType::GET).process<ChapterNamePageIndexProcessor>();
+    route<"/optional-chapter/{str}?/page{int}?/">(RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
+    route<"/optional-chapter2/{str}?/{int}?/">(RequestType::GET).process<OptionalChapterNamePageIndexProcessor>();
     route<"/chapter_{str}/page_{int}/">(RequestType::GET).process<ChapterNamePageIndexProcessor>("TestBook");
     route<"/book-{str}/chapter/{str}/page/{int}">(RequestType::GET).process<BookProcessor>();
     route<"/book-{str}/chapter/{str}/">(RequestType::GET).process<BookProcessor>();
@@ -708,6 +869,14 @@ TEST_F(Router, Matching_Path_CPP20)
                         auto fileContent = std::string{"XML file: " + fileName};
                         response.send(fileContent);
                     });
+    route<"/files-optional/{str}?">(RequestType::GET)
+            .process(
+                    [](const std::optional<std::string>& fileName, const Request&, Response& response)
+                    {
+                        auto fileContent = std::string{"file: " + fileName.value_or("empty")};
+                        response.send(fileContent);
+                    });
+
     route<"/context">(RequestType::GET)
             .process(
                     [](const Request&, Response& response, Context& context)
@@ -721,6 +890,12 @@ TEST_F(Router, Matching_Path_CPP20)
                     [](const std::string& title, const Request&, Response& response, Context& context)
                     {
                         response.send(title + ": " + std::to_string(context.counter));
+                    });
+    route<"/{str}?/optional-context">(RequestType::GET)
+            .process(
+                    [](const std::optional<std::string>& title, const Request&, Response& response, Context& context)
+                    {
+                        response.send(title.value_or("no-title") + ": " + std::to_string(context.counter));
                     });
 
     route().set("404");
@@ -746,6 +921,30 @@ TEST_F(Router, Matching_Path_CPP20)
 
     processRequest("/chapter/test/page123");
     checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/test/page123");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter/page123");
+    checkResponse("Chapter: no-chapter, page[123]");
+
+    processRequest("/optional-chapter/test/page");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter/page");
+    checkResponse("Chapter: no-chapter, page[0]");
+
+    processRequest("/optional-chapter2/test/123/");
+    checkResponse("Chapter: test, page[123]");
+
+    processRequest("/optional-chapter2/123/");
+    checkResponse("Chapter: 123, page[0]");
+
+    processRequest("/optional-chapter2/test/");
+    checkResponse("Chapter: test, page[0]");
+
+    processRequest("/optional-chapter2/");
+    checkResponse("Chapter: no-chapter, page[0]");
 
     processRequest("/chapter_test/page_123");
     checkResponse("TestBook Chapter: test, page[123]");
@@ -776,6 +975,12 @@ TEST_F(Router, Matching_Path_CPP20)
     processRequest("/files/test.xml");
     checkResponse("XML file: test");
 
+    processRequest("/files-optional/test.xml");
+    checkResponse("file: test.xml");
+
+    processRequest("/files-optional/");
+    checkResponse("file: empty");
+
     processRequest("/files/test.xml1");
     checkResponse("404");
 
@@ -790,6 +995,12 @@ TEST_F(Router, Matching_Path_CPP20)
 
     processRequest("/test/context");
     checkResponse("test: 1");
+
+    processRequest("/test/optional-context");
+    checkResponse("test: 1");
+
+    processRequest("/optional-context");
+    checkResponse("no-title: 1");
 }
 
 #endif
