@@ -82,6 +82,7 @@ public:
     auto& routeRegex()
     {
         constexpr auto captureGroupCount = detail::countRegexCaptureGroups<regex>();
+        static_assert(captureGroupCount >= 0, "Invalid regular expression: mismatched parentheses detected");
         return makeRegexRoute<captureGroupCount>(std::string{regex.str()}, {});
     }
 
@@ -89,6 +90,7 @@ public:
     auto& routeRegex(TRouteMatcherArgs&&... matcherArgs)
     {
         constexpr auto captureGroupCount = detail::countRegexCaptureGroups<regex>();
+        static_assert(captureGroupCount >= 0, "Invalid regular expression: mismatched parentheses detected");
         return makeRegexRoute<captureGroupCount>(
                 std::string{regex.str()},
                 {std::forward<TRouteMatcherArgs>(matcherArgs)...});
@@ -146,6 +148,16 @@ private:
                             "Trying to use an unregistered parameter name in route");
                     pathStr = sfun::replace(
                             pathStr,
+                            "/\\{" + std::string{Param::name} + "\\}\\?/",
+                            "(?:/(" + std::string{Param::regex} + "))?/");
+
+                    pathStr = sfun::replace(
+                            pathStr,
+                            "\\{" + std::string{Param::name} + "\\}\\?",
+                            "(" + std::string{Param::regex} + ")?");
+
+                    pathStr = sfun::replace(
+                            pathStr,
                             "\\{" + std::string{Param::name} + "\\}",
                             "(" + std::string{Param::regex} + ")");
                 });
@@ -166,6 +178,12 @@ private:
             if (!paramRegex.has_value())
                 onUnregisteredRouteParameterError(param);
 
+            pathStr = sfun::replace(
+                    pathStr,
+                    "/\\{" + param + "\\}\\?/",
+                    "(?:/(" + std::string{paramRegex.value()} + "))?/");
+
+            pathStr = sfun::replace(pathStr, "\\{" + param + "\\}\\?", "(" + std::string{paramRegex.value()} + ")?");
             pathStr = sfun::replace(pathStr, "\\{" + param + "\\}", "(" + std::string{paramRegex.value()} + ")");
         }
         return makeRegexRoute(pathStr, std::move(routeMatchers));

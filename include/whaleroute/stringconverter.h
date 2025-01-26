@@ -1,6 +1,7 @@
 #ifndef WHALEROUTE_STRINGCONVERTER_H
 #define WHALEROUTE_STRINGCONVERTER_H
 
+#include "external/sfun/type_traits.h"
 #include <optional>
 #include <sstream>
 #include <string>
@@ -15,8 +16,8 @@ struct StringConverter {
             return data;
         }
         else {
-            auto value = T{};
             auto stream = std::stringstream{data};
+            auto value = T{};
             stream >> value;
 
             if (stream.bad() || stream.fail() || !stream.eof())

@@ -30,7 +30,14 @@ template<typename T>
 std::optional<T> convertFromString(const std::string& data)
 {
     try {
-        return config::StringConverter<T>::fromString(data);
+        if constexpr(sfun::is_optional_v<T>) {
+            if (data.empty())
+                return T{};
+
+            return config::StringConverter<sfun::remove_optional_t<T>>::fromString(data);
+        }
+        else
+            return config::StringConverter<T>::fromString(data);
     }
     catch (...) {
         return std::nullopt;

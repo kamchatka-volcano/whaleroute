@@ -39,7 +39,7 @@ inline std::vector<std::string> readPathParams(std::string_view str)
 
 template<auto idArray, std::size_t... Is>
 constexpr auto paramIdListToParamTraitTupleImpl(std::index_sequence<Is...>) {
-    return std::tuple<sfun::type_identity<config::RouteParam<idArray[Is]>>...>{};
+    return std::tuple<sfun::type_identity<config::RouteParam<idArray[Is].id>>...>{};
 }
 
 template<auto idArray>
@@ -49,7 +49,10 @@ constexpr auto paramIdListToParamTraitTuple() {
 
 template<auto idArray, std::size_t... Is>
 constexpr auto paramIdListToParamTypeTupleImpl(std::index_sequence<Is...>) {
-    return std::tuple<sfun::type_identity<detail::RouteParamType<idArray[Is]>>...>{};
+    return std::tuple<sfun::type_identity<std::conditional_t<
+            idArray[Is].optional,
+            std::optional<RouteParamType<idArray[Is].id>>,
+            RouteParamType<idArray[Is].id>>>...>{};
 }
 
 template<auto idArray>
@@ -114,25 +117,34 @@ constexpr int countRegexCaptureGroups(std::string_view str)
     int groupCount = 0;
     while (i < sfun::ssize(str)) {
         if (str[i] == '(') {
-            openBraceCount++;
-            groupCount++;
+            if (i == 0 || str[i - 1] != '\\')
+                openBraceCount++;
+            if (i >= sfun::ssize(str) - 1 || str[i + 1] != '?')
+                groupCount++;
         }
         if (str[i] == ')') {
-            openBraceCount--;
+            if (i == 0 || str[i - 1] != '\\')
+                openBraceCount--;
         }
-        if (openBraceCount > 1)
+        if (openBraceCount < 0)
             return -1;
         i++;
     }
     if (openBraceCount != 0)
         return -1;
 
+
     return groupCount;
 };
 
-constexpr static_vector<uint32_t> readPathParamIds(std::string_view str)
+struct ParamId {
+    uint32_t id;
+    bool optional;
+};
+
+constexpr static_vector<ParamId> readPathParamIds(std::string_view str)
 {
-    auto params = static_vector<uint32_t>{};
+    auto params = static_vector<ParamId>{};
     auto i = 0;
     int openBraceCount = 0;
     int paramPos = 0;
@@ -143,7 +155,9 @@ constexpr static_vector<uint32_t> readPathParamIds(std::string_view str)
         }
         if (str[i] == '}') {
             openBraceCount--;
-            params.emplace_back(fnv1a(std::string_view{std::next(str.begin(), paramPos), std::next(str.begin(), i)}));
+            params.emplace_back(
+                    ParamId{.id = fnv1a(std::string_view{std::next(str.begin(), paramPos), std::next(str.begin(), i)}),
+                            .optional = (i < sfun::ssize(str) - 1 && str[i + 1] == '?')});
         }
         if (openBraceCount > 1)
             return {};
